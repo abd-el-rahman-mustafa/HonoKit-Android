@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+  <!-- A card: frame, a photo (head and shoulders) and two lines of text. -->
+  <path
+      android:fillColor="@android:color/white"
+      android:fillType="evenOdd"
+      android:pathData="M160,800Q127,800 103.5,776.5Q80,753 80,720L80,240Q80,207 103.5,183.5Q127,160 160,160L800,160Q833,160 856.5,183.5Q880,207 880,240L880,720Q880,753 856.5,776.5Q833,800 800,800L160,800ZM160,720L800,720L800,240L160,240L160,720ZM330,340A65,65 0 1,1 330,470A65,65 0 1,1 330,340ZM200,640Q200,540 330,540Q460,540 460,640L460,660L200,660L200,640ZM540,370L780,370L780,430L540,430L540,370ZM540,510L720,510L720,570L540,570L540,510Z"/>
+</vector>

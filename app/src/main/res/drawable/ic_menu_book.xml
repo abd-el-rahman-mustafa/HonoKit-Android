@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+  <!-- An open book: two pages curving up from the spine. -->
+  <path
+      android:fillColor="@android:color/white"
+      android:fillType="evenOdd"
+      android:pathData="M480,780Q430,735 362,712Q294,690 220,690Q160,690 80,712L80,232Q150,200 220,200Q300,200 370,224Q440,248 480,290Q520,248 590,224Q660,200 740,200Q810,200 880,232L880,712Q800,690 740,690Q666,690 598,712Q530,735 480,780ZM160,612Q190,606 220,606Q280,606 335,622Q390,638 440,668L440,320Q395,295 335,282Q275,270 220,270Q190,270 160,276L160,612ZM520,668Q570,638 625,622Q680,606 740,606Q770,606 800,612L800,276Q770,270 740,270Q685,270 625,282Q565,295 520,320L520,668Z"/>
+</vector>

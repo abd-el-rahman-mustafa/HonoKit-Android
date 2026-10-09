@@ -1,0 +1,30 @@
+name: Suggest a feature · اقتراح ميزة
+description: An idea that would make HonoKit for Android more useful. · فكرة تجعل HonoKit أكثر فائدة.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        HonoKit stays offline, with no account and no tracking; ideas that keep it that way fit best.
+        يبقى HonoKit دون إنترنت ودون حساب ودون تتبّع، والأفكار التي تحافظ على ذلك هي الأنسب.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do? · ماذا تحاول أن تفعل؟
+      description: The task or the problem, in your own words. · المهمة أو المشكلة بكلماتك.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help? · ما الذي سيساعدك؟
+      description: How you picture it working. · كيف تتخيّل أن تعمل.
+    validations:
+      required: true
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else? · أي شيء آخر؟
+      description: Other apps that do it well, screenshots, Arabic or right-to-left details. · تطبيقات أخرى تفعلها جيدًا، لقطات شاشة، تفاصيل تخص العربية أو الاتجاه من اليمين إلى اليسار.
+    validations:
+      required: false

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: a hook for driving the app from the PC while testing (docs/testing.md). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- GWP-ASan reports heap misuse with the stacks that caused it (debug builds only). -->
+    <application android:gwpAsanMode="always">
+        <receiver
+            android:name="com.aamus.powerpdf.DebugReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver"
+            xmlns:tools="http://schemas.android.com/tools">
+            <intent-filter>
+                <action android:name="com.aamus.powerpdf.DEBUG" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

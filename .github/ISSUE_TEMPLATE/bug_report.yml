@@ -1,0 +1,76 @@
+name: Report a problem · الإبلاغ عن مشكلة
+description: Something in HonoKit for Android does not work as it should. · شيء في HonoKit لا يعمل كما ينبغي.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. English or Arabic are both fine.
+        شكرًا لك على الإبلاغ. يمكنك الكتابة بالعربية أو بالإنجليزية.
+
+        If you opened this form from **Settings › About › Report a problem**, the first four fields are already filled in.
+        إذا فتحت هذا النموذج من **الإعدادات › حول › الإبلاغ عن مشكلة** فالحقول الأربعة الأولى معبّأة مسبقًا.
+
+        **Security problems:** please do not report them here; see [SECURITY.md](https://github.com/abd-el-rahman-mustafa/HonoKit-Android/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: HonoKit version · إصدار HonoKit
+      description: Settings › About. · الإعدادات › حول.
+      placeholder: "0.10.4"
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version · إصدار Android
+      placeholder: "Android 15 (SDK 35)"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Phone or tablet · الهاتف أو الجهاز اللوحي
+      placeholder: "Maker and model · الشركة والطراز"
+    validations:
+      required: false
+  - type: input
+    id: language
+    attributes:
+      label: App language · لغة التطبيق
+      placeholder: "en, ar, …"
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do? · ماذا فعلت؟
+      description: The steps, one per line, so someone else can do the same. · الخطوات، كل خطوة في سطر، حتى يستطيع غيرك تكرارها.
+      placeholder: |
+        1. Opened a PDF from Files
+        2. Tapped Edit › Comment › Highlight
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened? · ماذا حدث؟
+      description: Screenshots help; make sure they show nothing private. · لقطات الشاشة مفيدة؛ تأكد أنها لا تُظهر شيئًا خاصًا.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect? · ماذا كنت تتوقع؟
+    validations:
+      required: true
+  - type: textarea
+    id: file
+    attributes:
+      label: A file that shows it (optional) · ملف يُظهر المشكلة (اختياري)
+      description: |
+        Attach a PDF or picture **only if it has nothing private in it**: issues are public. A small test file that shows the same problem is best.
+        أرفق ملف PDF أو صورة **فقط إذا لم يكن فيه شيء خاص**، فالبلاغات علنية. والأفضل ملف تجريبي صغير يُظهر المشكلة نفسها.
+    validations:
+      required: false

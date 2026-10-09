@@ -1,0 +1,38 @@
+# Gradle / Android build output
+.gradle/
+build/
+/local.properties
+/release/
+/captures/
+*.apk
+*.aab
+*.idsig
+
+# Signing: the keystore and its passwords never go into git (docs/decisions.md, "Signing")
+*.jks
+*.keystore
+keystore.properties
+
+# Test material: never commit PDFs (owner rule)
+*.pdf
+corpus/
+shots-raw/
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Kotlin compiler state and its error logs (a stray one was committed in 77e231c)
+.kotlin/
+
+# Local settings for this PC's build and phone scripts (gw.cmd, tools/env.sh)
+/gw.local.cmd
+/tools/local.env
+/tmp/
+
+# Kept in a separate private repository
+/docs/
+/CLAUDE.md

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem privately · الإبلاغ عن مشكلة أمنية بشكل خاص
+    url: https://github.com/abd-el-rahman-mustafa/HonoKit-Android/security/policy
+    about: Please do not post security problems in public issues; follow the security policy. · من فضلك لا تنشر المشكلات الأمنية في البلاغات العامة.
+  - name: HonoKit for Windows · HonoKit لنظام Windows
+    url: https://github.com/abd-el-rahman-mustafa/HonoKit/issues
+    about: Problems with the desktop app go to its own repository. · مشكلات تطبيق سطح المكتب تُبلَّغ في مستودعه.

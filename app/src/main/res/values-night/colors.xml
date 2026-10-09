@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="window">#FF1B1B1B</color>
+    <color name="accent">#FF4B9CF5</color>
+    <color name="brand">#FF8F93FF</color>
+</resources>
