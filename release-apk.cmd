@@ -37,7 +37,7 @@ if not defined AAPT (
 )
 echo HonoKit for Android %VER%: %APK%
 if /i not "%~1"=="publish" (
-  echo Not published. To publish %TAG% to %REPO% ^(not marked Latest^): release-apk.cmd publish
+  echo Not published. To publish %TAG% to %REPO%: release-apk.cmd publish
   exit /b 0
 )
 gh release view %TAG% --repo %REPO% >nul 2>&1 && (
@@ -51,11 +51,14 @@ set "NOTES=%TEMP%\honokit-android-%VER%-notes.md"
 >> "%NOTES%" echo.
 >> "%NOTES%" echo Already installed? HonoKit offers this update itself ^(Settings, Updates^).
 >> "%NOTES%" echo.
->> "%NOTES%" echo Windows: see the release marked **Latest**.
+>> "%NOTES%" echo HonoKit for Windows: https://github.com/abd-el-rahman-mustafa/HonoKit/releases
 gh release create %TAG% "%APK%" --repo %REPO% --title "HonoKit for Android %VER%" --notes-file "%NOTES%" %LATEST% || exit /b 1
+rem Only the shared HonoKit-Releases must keep the desktop release as Latest.
+if /i not "%REPO%"=="abd-el-rahman-mustafa/HonoKit-Releases" goto :done
 for /f %%t in ('gh api repos/%REPO%/releases/latest --jq .tag_name 2^>nul') do set "LATEST=%%t"
 if /i "%LATEST%"=="%TAG%" (
   echo WARNING: %TAG% became Latest; desktop copies would stop finding updates. Mark the desktop release as Latest on GitHub.
   exit /b 1
 )
+:done
 echo Published: https://github.com/%REPO%/releases/tag/%TAG%
