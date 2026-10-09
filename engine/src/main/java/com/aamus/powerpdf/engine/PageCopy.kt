@@ -204,35 +204,54 @@ internal fun PDFDocument.separateRepeats() {
 // --- The catalogue after rearranging (P3) ------------------------------------------------------
 
 /** The entries of a number tree (/Nums, /Kids), flattened and sorted by key. */
-private fun numberTree(tree: PDFObject, depth: Int = 0): List<Pair<Int, PDFObject>> {
+private fun numberTree(tree: PDFObject): List<Pair<Int, PDFObject>> {
     val out = ArrayList<Pair<Int, PDFObject>>()
-    if (!tree.isDictionary || depth > 16) return out
-    val nums = tree.get("Nums")
-    if (nums.isArray) {
-        var i = 0
-        while (i + 1 < nums.size()) {
-            if (nums.get(i).isNumber) out.add(nums.get(i).asInteger() to nums.get(i + 1))
-            i += 2
-        }
+    walkTree(tree, "Nums", 0, HashSet()) { key, value ->
+        if (key.isNumber) out.add(key.asInteger() to value)
+        out.size
     }
-    for (kid in tree.get("Kids").items()) out.addAll(numberTree(kid, depth + 1))
     return out.sortedBy { it.first }
 }
 
 /** The entries of a name tree (/Names, /Kids), flattened. */
-private fun nameTree(tree: PDFObject, depth: Int = 0): List<Pair<PDFObject, PDFObject>> {
+private fun nameTree(tree: PDFObject): List<Pair<PDFObject, PDFObject>> {
     val out = ArrayList<Pair<PDFObject, PDFObject>>()
-    if (!tree.isDictionary || depth > 16) return out
-    val names = tree.get("Names")
-    if (names.isArray) {
-        var i = 0
-        while (i + 1 < names.size()) {
-            out.add(names.get(i) to names.get(i + 1))
-            i += 2
+    walkTree(tree, "Names", 0, HashSet()) { key, value ->
+        out.add(key to value)
+        out.size
+    }
+    return out
+}
+
+/** More entries than any real tree has; a hostile file stops here instead of filling memory. */
+private const val TREE_ENTRIES = 100_000
+
+/**
+ * Visits a number or name tree's pairs. A node listed twice is read once and the pairs are capped,
+ * so a tree that repeats one branch at every level cannot run for ever. [visit] returns how many
+ * pairs are kept so far.
+ */
+private fun walkTree(tree: PDFObject, key: String, depth: Int, seen: HashSet<Int>, visit: (PDFObject, PDFObject) -> Int): Int {
+    var count = 0
+    fun walk(node: PDFObject, depth: Int) {
+        if (!node.isDictionary || depth > 16 || count >= TREE_ENTRIES) return
+        if (node.isIndirect && !seen.add(node.asIndirect())) return
+        val pairs = node.get(key)
+        if (pairs.isArray) {
+            var i = 0
+            while (i + 1 < pairs.size() && count < TREE_ENTRIES) {
+                count = visit(pairs.get(i), pairs.get(i + 1))
+                i += 2
+            }
+        }
+        val kids = node.get("Kids")
+        if (kids.isArray) for (i in 0 until kids.size()) {
+            if (count >= TREE_ENTRIES) break
+            walk(kids.get(i), depth + 1)
         }
     }
-    for (kid in tree.get("Kids").items()) out.addAll(nameTree(kid, depth + 1))
-    return out
+    walk(tree, depth)
+    return count
 }
 
 /** The page a destination (explicit array, or a dictionary with /D) points at, as an object number. */
@@ -249,9 +268,18 @@ private fun destPage(dest: PDFObject): Int? {
 private fun PDFDocument.relabel(labels: PDFObject, order: List<Int>): PDFObject? {
     val ranges = numberTree(labels)
     if (ranges.isEmpty()) return null
+    // The last range starting at or before the page (the ranges are sorted).
     fun rangeOf(page: Int): Int {
         var found = -1
-        for (r in ranges.indices) if (ranges[r].first <= page) found = r
+        var lo = 0
+        var hi = ranges.size - 1
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            if (ranges[mid].first <= page) {
+                found = mid
+                lo = mid + 1
+            } else hi = mid - 1
+        }
         return found
     }
     val nums = newArray()

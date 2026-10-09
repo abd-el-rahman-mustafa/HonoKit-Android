@@ -33,6 +33,16 @@ class RedactPatternsTest {
     }
 
     @Test
+    fun internationalPhonesAreTakenWhole() {
+        val text = "call +1 555.987.6543, office 0044 20 7946 0018, fax +49.2151.123456, desk +33 1 23 45 67 89 01 ext, home +971 50 123 4567"
+        assertEquals(
+            listOf("+1 555.987.6543", "0044 20 7946 0018", "+49.2151.123456", "+33 1 23 45 67 89 01", "+971 50 123 4567"),
+            found(text, RedactPattern.Phone),
+        )
+        assertEquals(emptyList<String>(), found("on 01.10.2026 the ratio was 0.1234567 for item 12 345", RedactPattern.Phone))
+    }
+
+    @Test
     fun arabicIndicDigitsCountAsDigits() {
         val text = RedactPatterns.westernDigits("الهوية ٧٨٤-١٩٩٠-١٢٣٤٥٦٧-١")
         assertEquals(listOf("784-1990-1234567-1"), found(text, RedactPattern.EmiratesId))

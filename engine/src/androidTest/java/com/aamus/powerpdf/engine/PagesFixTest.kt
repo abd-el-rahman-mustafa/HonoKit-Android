@@ -241,6 +241,34 @@ class PagesFixTest {
     }
 
     @Test
+    fun aLabelTreeRepeatingOneBranchIsReadOnce() {
+        // Each level lists the level below 40 times: walked naively, that is 40^8 leaves.
+        val file = Fixtures.pages(3, ::text) { pdf ->
+            val nums = pdf.newArray()
+            nums.push(0)
+            nums.push(pdf.newDictionary().also { it.put("S", pdf.newName("r")) })
+            var node = pdf.indirect(pdf.newDictionary().also { it.put("Nums", nums) })
+            repeat(8) {
+                val kids = pdf.newArray()
+                repeat(40) { kids.push(node) }
+                node = pdf.indirect(pdf.newDictionary().also { it.put("Kids", kids) })
+            }
+            pdf.trailer.get("Root").put("PageLabels", node)
+        }
+        var doc = Fixtures.open(file)
+        try {
+            val started = System.currentTimeMillis()
+            doc.movePages(listOf(0), 3)
+            assertTrue("took ${System.currentTimeMillis() - started} ms", System.currentTimeMillis() - started < 5000)
+            doc = Fixtures.reopen(doc)
+            assertEquals(3, doc.pageCount)
+            assertTrue("PageLabels" in rootKeys(doc))
+        } finally {
+            doc.close()
+        }
+    }
+
+    @Test
     fun rearrangingKeepsLabelsLanguageAndStructure() {
         var doc = Fixtures.open(catalogued())
         try {

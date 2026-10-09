@@ -27,8 +27,9 @@ data class RedactResult(val areas: Int, val pages: Int, val leftover: Int, val s
 object RedactPatterns {
     private val PATTERNS = mapOf(
         RedactPattern.Email to Regex("""[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}""", RegexOption.IGNORE_CASE),
-        // UAE numbers (+971 / 00971 / 0 then 5x or a landline code), and other international numbers.
-        RedactPattern.Phone to Regex("""(?:(?:\+|00)971[\s-]?|\b0)(?:5\d|[2-9])[\s-]?\d{3}[\s-]?\d{4}\b|\+\d{1,3}[\s-]?\(?\d{1,4}\)?(?:[\s-]?\d{2,4}){2,4}"""),
+        // UAE numbers (+971 / 00971 / 0 then 5x or a landline code), and other international numbers
+        // (+ or 00, groups split by spaces, dashes or dots), taken whole so no part stays readable.
+        RedactPattern.Phone to Regex("""(?:(?:\+|\b00)971[\s.-]?|\b0)(?:5\d|[2-9])[\s.-]?\d{3}[\s.-]?\d{4}\b|(?:\+|\b00)\d{1,3}[\s.-]?\(?\d{1,4}\)?(?:[\s.-]?\d{2,4}){2,5}"""),
         RedactPattern.EmiratesId to Regex("""\b784[\s-]?\d{4}[\s-]?\d{7}[\s-]?\d\b"""),
         // Case-insensitive because lines are matched folded; the checksum keeps it from matching words.
         RedactPattern.Iban to Regex("""\b[a-z]{2}\d{2}(?:\s?[a-z0-9]{4}){2,7}(?:\s?[a-z0-9]{1,4})?\b""", RegexOption.IGNORE_CASE),
