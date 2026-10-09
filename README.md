@@ -5,26 +5,25 @@
 <h1 align="center">HonoKit for Android</h1>
 
 <p align="center">
-  An offline PDF and image toolkit for Android, built Arabic-first.<br>
-  <span dir="rtl">أدوات PDF والصور على Android، تعمل دون إنترنت، والعربية فيها أولًا.</span>
+  An offline PDF and image toolkit for Android, with first-class Arabic and right-to-left support.
 </p>
 
 <p align="center">
-  <a href="https://github.com/abd-el-rahman-mustafa/HonoKit-Releases/releases">Download</a> ·
+  <a href="https://github.com/abd-el-rahman-mustafa/HonoKit-Android/releases/latest">Download</a> ·
   <a href="https://github.com/abd-el-rahman-mustafa/HonoKit">HonoKit for Windows</a> ·
   <a href="https://github.com/abd-el-rahman-mustafa/HonoKit-Android/issues">Report a problem</a> ·
   <a href="LICENSE">AGPL-3.0</a>
 </p>
 
 <p align="center">
-  <img src=".github/screenshots/home.webp" width="200" alt="Home with recent files">
-  <img src=".github/screenshots/viewer-arabic-dark.webp" width="200" alt="Reading an Arabic PDF, dark theme">
-  <img src=".github/screenshots/comment.webp" width="200" alt="Highlighting and commenting">
+  <img src=".github/screenshots/home.webp" width="200" alt="Home with recent PDFs and images">
+  <img src=".github/screenshots/comments.webp" width="200" alt="Comments with replies and review states">
+  <img src=".github/screenshots/link-check.webp" width="200" alt="Web links open only after you confirm">
 </p>
 <p align="center">
-  <img src=".github/screenshots/fill-and-sign.webp" width="200" alt="Fill and sign">
-  <img src=".github/screenshots/organize.webp" width="200" alt="Organizing pages">
-  <img src=".github/screenshots/tools-arabic-dark.webp" width="200" alt="PDF tools in Arabic, dark theme">
+  <img src=".github/screenshots/compare.webp" width="200" alt="Compare two versions of a PDF">
+  <img src=".github/screenshots/compress.webp" width="200" alt="Compress a PDF">
+  <img src=".github/screenshots/images-to-pdf.webp" width="200" alt="Images to PDF">
 </p>
 
 ## Why HonoKit
@@ -61,17 +60,10 @@ Android 8.0 (API 26) or newer.
 
 ## Download
 
-Signed APKs are published on
-[HonoKit-Releases](https://github.com/abd-el-rahman-mustafa/HonoKit-Releases/releases); the
-Android releases are the ones tagged `android-v…`. Installed copies can update themselves from
-there (Settings › Updates). The Windows app is
+Get the signed APK from the [latest release](https://github.com/abd-el-rahman-mustafa/HonoKit-Android/releases/latest)
+and open it on your phone. Installed copies update themselves from this repository's releases
+(Settings › Updates). Looking for the Windows app? See
 [HonoKit for Windows](https://github.com/abd-el-rahman-mustafa/HonoKit).
-
-<p dir="rtl">
-التنزيل: ملفات APK الموقّعة في
-<a href="https://github.com/abd-el-rahman-mustafa/HonoKit-Releases/releases">HonoKit-Releases</a>
-(إصدارات Android هي التي تبدأ بـ <code>android-v</code>). ويمكن للتطبيق أن يحدّث نفسه من هناك.
-</p>
 
 ## Build
 
