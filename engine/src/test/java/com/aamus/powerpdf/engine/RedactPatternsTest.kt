@@ -47,4 +47,13 @@ class RedactPatternsTest {
         val text = RedactPatterns.westernDigits("الهوية ٧٨٤-١٩٩٠-١٢٣٤٥٦٧-١")
         assertEquals(listOf("784-1990-1234567-1"), found(text, RedactPattern.EmiratesId))
     }
+
+    @Test
+    fun redactionFoldsTurkishIAndRepeatedSpaces() {
+        val (text, map) = foldLineForRedact("İSTANBUL  ofisi".map { it.toString() })
+        assertEquals("istanbul ofisi", text)
+        assertEquals(text.length, map.size)
+        assertEquals(10, map[9]) // the o after the two spaces
+        assertEquals(foldLineForRedact(listOf("ırmak")).first, foldLineForRedact(listOf("IRMAK")).first)
+    }
 }

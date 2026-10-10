@@ -88,8 +88,27 @@ object RedactPatterns {
         }.toList()
 }
 
+/** Turkish İ and ı fold to i one for one (lowercase() makes İ two characters); white space as one space. */
 private fun foldForRedact(s: String): String =
-    RedactPatterns.westernDigits(s).filterNot { it in 'ً'..'ٰ' || it == 'ٟ' || it == 'ـ' }.lowercase()
+    RedactPatterns.westernDigits(s).filterNot { it in 'ً'..'ٰ' || it == 'ٟ' || it == 'ـ' }.replace('İ', 'i').replace('ı', 'i').lowercase().replace(Regex("\\s+"), " ")
+
+/**
+ * A line's glyphs folded for matching, and for each folded character the glyph it came from
+ * (folding can drop characters, such as vowel marks).
+ */
+internal fun foldLineForRedact(glyphs: List<String>): Pair<String, List<Int>> {
+    val map = ArrayList<Int>()
+    val folded = StringBuilder()
+    glyphs.forEachIndexed { i, c ->
+        for (ch in foldForRedact(c)) {
+            // A phrase still matches where the page has two spaces in a row.
+            if (ch == ' ' && folded.endsWith(' ')) continue
+            folded.append(ch)
+            map.add(i)
+        }
+    }
+    return folded.toString() to map
+}
 
 /**
  * Finds words or patterns to redact. Words are matched whole or as part of a word, ignoring case
@@ -100,17 +119,7 @@ fun PdfDoc.findToRedact(words: List<String>, patterns: Set<RedactPattern>, whole
     val needles = words.map { foldForRedact(it.trim()) }.filter { it.isNotEmpty() }
     for (p in 0 until pageCount) {
         for (line in lines(p)) {
-            // Folding can drop characters (vowel marks), so each folded character remembers its glyph.
-            val map = ArrayList<Int>()
-            val folded = StringBuilder()
-            line.glyphs.forEachIndexed { i, g ->
-                val f = foldForRedact(g.c)
-                for (ch in f) {
-                    folded.append(ch)
-                    map.add(i)
-                }
-            }
-            val text = folded.toString()
+            val (text, map) = foldLineForRedact(line.glyphs.map { it.c })
             fun add(start: Int, endExclusive: Int) {
                 val first = map.getOrNull(start) ?: return
                 val last = map.getOrNull(endExclusive - 1) ?: return

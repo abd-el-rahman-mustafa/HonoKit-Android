@@ -547,6 +547,9 @@ object TextLogic {
             ) return ""
             if (ch == 'أ' || ch == 'إ' || ch == 'آ' || ch == 'ٱ') return "ا"
             if (ch == 'ى') return "ي"
+            // Turkish dotted İ and dotless ı fold with i, one letter for one: lowercase() turns İ
+            // into i and a combining dot, and ı has no case pair, so "istanbul" missed "İSTANBUL".
+            if (ch == 'İ' || ch == 'ı') return "i"
             if (ch == ' ') return " "
         }
         return java.text.Normalizer.normalize(c, java.text.Normalizer.Form.NFKC).lowercase()
@@ -565,7 +568,8 @@ object TextLogic {
 
     /** Finds a phrase in one page's lines. One box per match. */
     fun searchLines(lines: List<TextLine>, needle: String, limit: Int = 500): List<Box> {
-        val query = foldString(needle).trim()
+        // Runs of white space read as one space, in the query and on the page.
+        val query = foldString(needle).replace(Regex("\\s+"), " ").trim()
         if (query.isEmpty()) return emptyList()
         val hits = ArrayList<Box>()
         for (line in lines) {
@@ -574,7 +578,9 @@ object TextLogic {
             line.glyphs.forEachIndexed { gi, g ->
                 val f = foldChar(g.c)
                 for (k in f.indices) {
-                    folded.append(f[k])
+                    val space = f[k].isWhitespace()
+                    if (space && folded.endsWith(' ')) continue
+                    folded.append(if (space) ' ' else f[k])
                     owner.add(gi)
                 }
             }

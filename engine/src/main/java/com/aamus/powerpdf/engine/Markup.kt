@@ -63,9 +63,17 @@ private fun kindOf(a: PDFAnnotation): MarkKind = when (a.type) {
     else -> MarkKind.Other
 }
 
-/** Annotations the interface lists: not form fields, links or popups. */
-private fun isMarkup(a: PDFAnnotation): Boolean =
-    a.type != PDFAnnotation.TYPE_WIDGET && a.type != PDFAnnotation.TYPE_LINK && a.type != PDFAnnotation.TYPE_POPUP && a.type != PDFAnnotation.TYPE_REDACT
+/**
+ * Annotations the interface lists: not form fields, links or popups, nor media, 3D, printer marks
+ * and watermarks (ISO 32000-2 §12.5.6), which Acrobat keeps out of Comments.
+ */
+private val NOT_MARKUP = setOf(
+    PDFAnnotation.TYPE_WIDGET, PDFAnnotation.TYPE_LINK, PDFAnnotation.TYPE_POPUP, PDFAnnotation.TYPE_REDACT,
+    PDFAnnotation.TYPE_SCREEN, PDFAnnotation.TYPE_MOVIE, PDFAnnotation.TYPE_RICH_MEDIA, PDFAnnotation.TYPE_3D,
+    PDFAnnotation.TYPE_PRINTER_MARK, PDFAnnotation.TYPE_TRAP_NET, PDFAnnotation.TYPE_WATERMARK,
+)
+
+private fun isMarkup(a: PDFAnnotation): Boolean = a.type !in NOT_MARKUP
 
 private fun colourOf(a: PDFAnnotation): Rgb {
     val c = runCatching { a.color }.getOrNull() ?: return Rgb(0f, 0f, 0f)

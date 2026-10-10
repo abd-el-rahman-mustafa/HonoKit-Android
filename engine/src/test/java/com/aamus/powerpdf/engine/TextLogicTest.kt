@@ -270,4 +270,20 @@ class TextLogicTest {
         val joined = TextLogic.joinPieces(listOf(run("item", 40f), below, farColumn))
         assertEquals(3, joined.size)
     }
+
+    @Test
+    fun turkishDottedAndDotlessIFoldWithI() {
+        assertEquals(TextLogic.foldString("istanbul"), TextLogic.foldString("İSTANBUL"))
+        assertEquals(TextLogic.foldString("IRMAK"), TextLogic.foldString("ırmak"))
+        assertEquals(TextLogic.foldString("KIŞ"), TextLogic.foldString("kış"))
+        assertEquals(1, TextLogic.searchLines(listOf(ltrLine("İSTANBUL ofisi", 100f)), "istanbul").size)
+    }
+
+    @Test
+    fun aPhraseMatchesAcrossRepeatedSpaces() {
+        val line = ltrLine("The annual  report", 100f)
+        assertEquals(1, TextLogic.searchLines(listOf(line), "annual report").size)
+        assertEquals(1, TextLogic.searchLines(listOf(ltrLine("annual\treport", 100f)), "annual   report").size)
+        assertEquals(1, TextLogic.searchLines(listOf(line), "report").size)
+    }
 }
