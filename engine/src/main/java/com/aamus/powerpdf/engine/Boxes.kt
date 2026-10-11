@@ -211,7 +211,7 @@ internal fun PdfDoc.redrawOwn(a: PDFAnnotation, page: PDFPage? = null) {
     if (!o.get(KEY).isBoolean) return
     val c = numbers(o.get("C"), 3)
     val colour = if (c != null) Rgb(c[0], c[1], c[2]) else runCatching { a.color }.getOrNull()?.takeIf { it.size >= 3 }?.let { Rgb(it[0], it[1], it[2]) } ?: Rgb(0f, 0f, 0f)
-    val text = o.get("Contents").let { if (it.isString) it.asString() else "" }
+    val text = o.get("Contents").let { if (it.isString) TextLogic.lineBreaks(it.asString()) else "" }
     val size = o.get(KEY_SIZE).let { if (it.isNumber) it.asFloat() else 12f }
     if (o.get(KEY_CALLOUT).isBoolean) {
         drawCallout(a, o, page?.shownTransform() ?: transformOf(o), text, colour, size)

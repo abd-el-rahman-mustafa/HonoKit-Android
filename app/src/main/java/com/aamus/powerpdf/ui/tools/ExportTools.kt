@@ -73,6 +73,8 @@ fun ToImagesTool(session: DocumentSession) {
     fun go() {
         val list = pages
         if (list.isEmpty()) return
+        // Pictures of the pages copy their content: the author's "copy" right, as in Acrobat.
+        if (session.state.value.rights?.copy == false) return model.say(model.str(R.string.export_not_allowed), long = true)
         scope.launch {
             try {
                 if (!model.canWriteShared()) return@launch
@@ -165,6 +167,7 @@ fun ToTextTool(session: DocumentSession) {
     var markdown by remember { mutableStateOf(false) }
 
     fun go() {
+        if (session.state.value.rights?.copy == false) return model.say(model.str(R.string.export_not_allowed), long = true)
         scope.launch {
             try {
                 model.busy = model.str(R.string.working)

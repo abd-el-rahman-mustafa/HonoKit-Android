@@ -107,7 +107,7 @@ fun PdfDoc.marks(pageIndex: Int): List<MarkInfo> = withPdfPage(pageIndex) { page
                 box = Box(b.x0, b.y0, b.x1, b.y1),
                 colour = colourOf(a),
                 movable = kind != MarkKind.Highlight && kind != MarkKind.Underline && kind != MarkKind.StrikeOut && kind != MarkKind.Other,
-                text = runCatching { a.contents ?: "" }.getOrDefault(""),
+                text = runCatching { TextLogic.lineBreaks(obj.get("Contents").let { if (it.isString) it.asString() else a.contents ?: "" }) }.getOrDefault(""),
                 author = runCatching { a.author ?: "" }.getOrDefault(""),
                 // No /M: unknown (MuPDF answers 1970 for it).
                 modified = runCatching { if (obj.get("M").isNull) 0L else maxOf(0L, a.modificationDate?.time ?: 0L) }.getOrDefault(0L),

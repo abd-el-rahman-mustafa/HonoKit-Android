@@ -129,6 +129,7 @@
     <string name="select_all">Select all</string>
     <string name="text_copied">Text copied</string>
     <string name="copy_not_allowed">The author of this file does not allow copying its text.</string>
+    <string name="export_not_allowed">The author of this file does not allow copying its content, so it cannot be exported. Enter its permissions password to export it.</string>
     <string name="tools_button">Tools</string>
     <string name="exit_mode">Exit</string>
 

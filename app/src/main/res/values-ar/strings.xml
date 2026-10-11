@@ -128,6 +128,7 @@
     <string name="select_all">تحديد الكل</string>
     <string name="text_copied">نُسخ النص</string>
     <string name="copy_not_allowed">لا يسمح مؤلف هذا الملف بنسخ نصه.</string>
+    <string name="export_not_allowed">لا يسمح مؤلف هذا الملف بنسخ محتواه، فلا يمكن تصديره. أدخل كلمة مرور الأذونات لتصديره.</string>
     <string name="tools_button">الأدوات</string>
     <string name="exit_mode">خروج</string>
 

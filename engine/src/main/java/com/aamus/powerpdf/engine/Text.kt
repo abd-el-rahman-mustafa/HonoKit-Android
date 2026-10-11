@@ -41,6 +41,11 @@ data class Box(val x0: Float, val y0: Float, val x1: Float, val y1: Float) {
 object TextLogic {
     private const val ZERO = 0.01f
 
+    /** A comment's text with LF line breaks: Acrobat saves them as CR ("first\r\rsecond"), which Compose does not break on. */
+    fun lineBreaks(text: String): String = text.replace(CR, "\n")
+
+    private val CR = Regex("\r\n?")
+
     fun isArabicBaseLetter(c: String): Boolean {
         if (c.length != 1) return false
         val ch = c[0]

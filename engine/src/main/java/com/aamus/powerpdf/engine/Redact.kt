@@ -26,7 +26,8 @@ data class RedactResult(val areas: Int, val pages: Int, val leftover: Int, val s
 
 object RedactPatterns {
     private val PATTERNS = mapOf(
-        RedactPattern.Email to Regex("""[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}""", RegexOption.IGNORE_CASE),
+        // Letters and digits of any script (müller@bücher.de, иван@пример.рф); a top-level name of letters.
+        RedactPattern.Email to Regex("""[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.\p{L}{2,}(?![\p{L}\p{N}])"""),
         // UAE numbers (+971 / 00971 / 0 then 5x or a landline code), and other international numbers
         // (+ or 00, groups split by spaces, dashes or dots), taken whole so no part stays readable.
         RedactPattern.Phone to Regex("""(?:(?:\+|\b00)971[\s.-]?|\b0)(?:5\d|[2-9])[\s.-]?\d{3}[\s.-]?\d{4}\b|(?:\+|\b00)\d{1,3}[\s.-]?\(?\d{1,4}\)?(?:[\s.-]?\d{2,4}){2,5}"""),

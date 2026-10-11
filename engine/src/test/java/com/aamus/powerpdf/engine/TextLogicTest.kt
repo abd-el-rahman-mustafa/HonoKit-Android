@@ -286,4 +286,10 @@ class TextLogicTest {
         assertEquals(1, TextLogic.searchLines(listOf(ltrLine("annual\treport", 100f)), "annual   report").size)
         assertEquals(1, TextLogic.searchLines(listOf(line), "report").size)
     }
+
+    @Test
+    fun commentLineBreaksSavedAsCarriageReturnsBecomeLineFeeds() {
+        assertEquals("first line\n\nsecond paragraph", TextLogic.lineBreaks("first line\r\rsecond paragraph"))
+        assertEquals("one\ntwo\nthree", TextLogic.lineBreaks("one\r\ntwo\nthree"))
+    }
 }

@@ -27,4 +27,18 @@ class AnnotKindsTest {
             doc.close()
         }
     }
+
+    /** Acrobat saves a comment's line breaks as CR; they show as line breaks. */
+    @Test
+    fun commentLineBreaksSavedAsCarriageReturnsShow() {
+        var doc = Fixtures.open(Fixtures.pdf())
+        Raw.addAnnot(doc, Raw.dict(doc, "Type" to "/Annot", "Subtype" to "/Text", "Rect" to Raw.nums(doc, 50f, 50f, 70f, 70f), "Contents" to "first line\r\rsecond paragraph"))
+        Raw.addAnnot(doc, Raw.dict(doc, "Type" to "/Annot", "Subtype" to "/Square", "Rect" to Raw.nums(doc, 90f, 50f, 120f, 70f), "Contents" to "one\r\ntwo"))
+        doc = Fixtures.reopen(doc)
+        try {
+            assertEquals(listOf("first line\n\nsecond paragraph", "one\ntwo"), doc.marks(0).map { it.text })
+        } finally {
+            doc.close()
+        }
+    }
 }

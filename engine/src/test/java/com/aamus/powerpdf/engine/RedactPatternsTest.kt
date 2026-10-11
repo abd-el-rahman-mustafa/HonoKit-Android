@@ -56,4 +56,14 @@ class RedactPatternsTest {
         assertEquals(10, map[9]) // the o after the two spaces
         assertEquals(foldLineForRedact(listOf("ırmak")).first, foldLineForRedact(listOf("IRMAK")).first)
     }
+
+    @Test
+    fun emailFindsAddressesInAnyScript() {
+        assertEquals(listOf("müller@bücher.de"), found("write to müller@bücher.de today", RedactPattern.Email))
+        assertEquals(listOf("иван@пример.рф"), found("почта иван@пример.рф", RedactPattern.Email))
+        assertEquals(listOf("ayşe.yılmaz@örnek.com.tr"), found("ayşe.yılmaz@örnek.com.tr.", RedactPattern.Email))
+        assertEquals(listOf("info@example.ae"), found("البريد info@example.ae للتواصل", RedactPattern.Email))
+        // The domain still needs a dot and a top-level name made of letters.
+        assertEquals(emptyList<String>(), found("user@localhost or a@b.1", RedactPattern.Email))
+    }
 }
