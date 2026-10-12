@@ -555,6 +555,8 @@ object TextLogic {
             // Turkish dotted İ and dotless ı fold with i, one letter for one: lowercase() turns İ
             // into i and a combining dot, and ı has no case pair, so "istanbul" missed "İSTANBUL".
             if (ch == 'İ' || ch == 'ı') return "i"
+            // Greek final sigma ς is σ at the end of a word; a capital Σ folds to σ, so "ΛΟΓΟΣ" missed "λογος".
+            if (ch == 'ς') return "σ"
             if (ch == ' ') return " "
         }
         return java.text.Normalizer.normalize(c, java.text.Normalizer.Form.NFKC).lowercase()

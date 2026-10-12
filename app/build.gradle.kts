@@ -27,8 +27,8 @@ android {
         applicationId = "com.aamus.honokit"
         minSdk = 26
         targetSdk = 36
-        versionCode = 24
-        versionName = "0.10.7"
+        versionCode = 25
+        versionName = "0.10.8"
 
         // A rehearsal build reads updates from a feed on this PC instead of GitHub (docs/testing.md,
         // "Rehearsing an update"); every other build reads GitHub. Plain http is allowed only then:

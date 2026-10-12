@@ -108,11 +108,11 @@ class PdfDoc private constructor(
                     pdf.destroy()
                     throw PdfException(PdfException.Code.PasswordRequired, "This PDF is protected by a password.")
                 }
-                if (!pdf.authenticatePassword(password)) {
+                if (!Passwords.authenticate(password!!) { pdf.authenticatePassword(it) }) {
                     pdf.destroy()
                     throw PdfException(PdfException.Code.WrongPassword, "That password is not correct.")
                 }
-            } else if (given && isEncrypted(pdf) && !pdf.authenticatePassword(password)) {
+            } else if (given && isEncrypted(pdf) && !Passwords.authenticate(password!!) { pdf.authenticatePassword(it) }) {
                 pdf.destroy()
                 throw PdfException(PdfException.Code.WrongPassword, "That password is not correct.")
             }

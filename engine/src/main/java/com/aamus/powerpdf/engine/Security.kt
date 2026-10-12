@@ -45,8 +45,12 @@ object PdfSecurity {
      * password would split it (desktop §21). Returns a reason, or null if usable.
      */
     fun passwordProblem(password: String): String? = when {
-        password.contains(',') -> "comma"
-        password.length > 127 -> "long"
+        Passwords.prepared(password).contains(',') -> "comma"
+        // Readers key the file on the first 127 bytes (UTF-8) only: a longer open password could
+        // equal the permissions password where it counts, and opening with it would lift every
+        // restriction.
+        Passwords.byteLength(password) > 127 -> "long"
+        Passwords.prepared(password).isEmpty() -> "empty"
         else -> null
     }
 
@@ -63,10 +67,20 @@ object PdfSecurity {
     fun encryptOptions(o: ProtectOptions): String {
         if (o.userPassword.isEmpty() && o.ownerPassword.isNullOrEmpty()) throw PdfException(PdfException.Code.BadArguments, "A password is required.")
         listOfNotNull(o.userPassword.takeIf { it.isNotEmpty() }, o.ownerPassword?.takeIf { it.isNotEmpty() }).forEach {
-            if (passwordProblem(it) != null) throw PdfException(PdfException.Code.BadArguments, "A password cannot contain a comma.")
+            when (passwordProblem(it)) {
+                "comma" -> throw PdfException(PdfException.Code.BadArguments, "A password cannot contain a comma.")
+                "long" -> throw PdfException(PdfException.Code.BadArguments, "The password is too long.")
+                "empty" -> throw PdfException(PdfException.Code.BadArguments, "The password has no characters a reader would use.")
+            }
         }
-        val owner = o.ownerPassword?.takeIf { it.isNotEmpty() } ?: randomPassword()
-        return "encrypt=aes-256,user-password=${o.userPassword},owner-password=$owner,permissions=${permissionsValue(o)}"
+        // The same password for both would make whoever opens the file its owner (with every right).
+        if (o.userPassword.isNotEmpty() && !o.ownerPassword.isNullOrEmpty() && Passwords.prepared(o.userPassword) == Passwords.prepared(o.ownerPassword)) {
+            throw PdfException(PdfException.Code.BadArguments, "The permissions password must be different from the open password.")
+        }
+        // Written as Acrobat keys it (SASLprep), so Acrobat opens it with the same text; we try both.
+        val user = Passwords.prepared(o.userPassword)
+        val owner = o.ownerPassword?.takeIf { it.isNotEmpty() }?.let { Passwords.prepared(it) } ?: randomPassword()
+        return "encrypt=aes-256,user-password=$user,owner-password=$owner,permissions=${permissionsValue(o)}"
     }
 
     /**

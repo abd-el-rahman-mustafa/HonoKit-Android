@@ -85,6 +85,13 @@ class TextLogicTest {
     }
 
     @Test
+    fun foldsGreekFinalSigmaForSearch() {
+        assertEquals(TextLogic.foldString("λογος"), TextLogic.foldString("ΛΟΓΟΣ"))
+        assertEquals(TextLogic.foldString("λογος"), TextLogic.foldString("λογοσ"))
+        assertEquals(1, TextLogic.searchLines(listOf(ltrLine("ο λογος μας", 100f)), "ΛΟΓΟΣ").size)
+    }
+
+    @Test
     fun searchFindsArabicWithDifferentSpelling() {
         val line = rtlLine(listOf("إ" to 5f, "ل" to 5f, "ى" to 5f, " " to 3f, "ا" to 5f, "ل" to 5f, "م" to 5f))
         val hits = TextLogic.searchLines(listOf(line), "الي")

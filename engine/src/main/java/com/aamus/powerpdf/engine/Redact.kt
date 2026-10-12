@@ -89,9 +89,12 @@ object RedactPatterns {
         }.toList()
 }
 
-/** Turkish İ and ı fold to i one for one (lowercase() makes İ two characters); white space as one space. */
+/**
+ * Turkish İ and ı fold to i one for one (lowercase() makes İ two characters); Greek final ς to σ
+ * (lowercase() writes ς at the end of a word, but a lone Σ on the page as σ); white space as one space.
+ */
 private fun foldForRedact(s: String): String =
-    RedactPatterns.westernDigits(s).filterNot { it in 'ً'..'ٰ' || it == 'ٟ' || it == 'ـ' }.replace('İ', 'i').replace('ı', 'i').lowercase().replace(Regex("\\s+"), " ")
+    RedactPatterns.westernDigits(s).filterNot { it in 'ً'..'ٰ' || it == 'ٟ' || it == 'ـ' }.replace('İ', 'i').replace('ı', 'i').lowercase().replace('ς', 'σ').replace(Regex("\\s+"), " ")
 
 /**
  * A line's glyphs folded for matching, and for each folded character the glyph it came from

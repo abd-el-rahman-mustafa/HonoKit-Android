@@ -58,6 +58,15 @@ class RedactPatternsTest {
     }
 
     @Test
+    fun redactionFoldsGreekFinalSigma() {
+        // The page is folded a glyph at a time (a lone capital sigma lowercases to σ); the typed word
+        // as a whole (lowercase() writes ς at the end of a word).
+        val page = foldLineForRedact("ΛΟΓΟΣ".map { it.toString() }).first
+        assertEquals(page, foldLineForRedact(listOf("λογος")).first)
+        assertEquals(page, foldLineForRedact(listOf("ΛΟΓΟΣ")).first)
+    }
+
+    @Test
     fun emailFindsAddressesInAnyScript() {
         assertEquals(listOf("müller@bücher.de"), found("write to müller@bücher.de today", RedactPattern.Email))
         assertEquals(listOf("иван@пример.рф"), found("почта иван@пример.рф", RedactPattern.Email))
