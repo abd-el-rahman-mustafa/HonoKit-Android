@@ -164,6 +164,7 @@
     <string name="saved">Saved</string>
     <string name="saved_over">Saved over the original</string>
     <string name="save_failed">Could not save: %1$s</string>
+    <string name="error_save_check">Not saved: the saved copy would open with %1$d of %2$d pages, so the file was left as it was.</string>
     <string name="cannot_overwrite">Android does not let HonoKit change the original here, so a copy was saved.</string>
     <string name="downloads_place">Downloads › HonoKit</string>
     <string name="storage_permission">To save into Downloads, allow HonoKit to use storage.</string>

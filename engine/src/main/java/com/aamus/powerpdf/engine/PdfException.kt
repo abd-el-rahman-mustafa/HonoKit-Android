@@ -1,7 +1,10 @@
 package com.aamus.powerpdf.engine
 
-/** An error with a code the interface turns into a sentence in the person's language. */
-class PdfException(val code: Code, message: String) : Exception(message) {
+/**
+ * An error with a code the interface turns into a sentence in the person's language. [values]
+ * carries the numbers that sentence needs (SaveCheck: the pages found, then the pages expected).
+ */
+class PdfException(val code: Code, message: String, val values: List<Int> = emptyList()) : Exception(message) {
     enum class Code {
         Corrupt,
         NotPdf,
@@ -18,5 +21,7 @@ class PdfException(val code: Code, message: String) : Exception(message) {
         Signed,
         /** A dynamic XFA form (Adobe LiveCycle): only Adobe's readers can show and fill it (desktop forms.ts). */
         DynamicXfa,
+        /** What was written would not open again with every page, so it did not replace anything (decisions §61). */
+        SaveCheck,
     }
 }

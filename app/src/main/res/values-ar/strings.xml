@@ -163,6 +163,7 @@
     <string name="saved">حُفظ</string>
     <string name="saved_over">حُفظ فوق الأصل</string>
     <string name="save_failed">تعذّر الحفظ: %1$s</string>
+    <string name="error_save_check">لم يُحفظ: النسخة المحفوظة كانت ستُفتح بـ%1$d من %2$d صفحة، فتُرك الملف كما كان.</string>
     <string name="cannot_overwrite">لا يسمح أندرويد لتطبيق HonoKit بتغيير الأصل هنا، فحُفظت نسخة.</string>
     <string name="downloads_place">التنزيلات › HonoKit</string>
     <string name="storage_permission">للحفظ في مجلد التنزيلات، اسمح لتطبيق HonoKit باستخدام مساحة التخزين.</string>

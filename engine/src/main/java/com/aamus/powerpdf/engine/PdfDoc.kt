@@ -84,6 +84,27 @@ object PdfEngine {
 
     /** A new, empty PDF (no pages) to build into. */
     fun create(): PdfDoc = PdfDoc.adopt(PDFDocument(), null, null, fresh = true)
+
+    /**
+     * Checks that [file], just written and about to replace or become the person's file, opens
+     * again with all [pages] (decisions §61). A rewrite keeps only what the catalog reaches; the
+     * person's file must never be replaced by one that opens with fewer pages, or not at all.
+     * Call on the engine thread.
+     */
+    fun checkSaved(file: File, password: String?, pages: Int) {
+        val found = try {
+            open(file, password).use { it.pageCount }
+        } catch (_: Throwable) {
+            0
+        }
+        if (found != pages) {
+            throw PdfException(
+                PdfException.Code.SaveCheck,
+                "The saved copy would open with $found of $pages pages, so the file was not replaced.",
+                listOf(found, pages),
+            )
+        }
+    }
 }
 
 class PdfDoc private constructor(

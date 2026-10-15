@@ -678,6 +678,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             PdfException.Code.EditUnsafe -> str(R.string.error_edit_unsafe)
             PdfException.Code.Signed -> str(R.string.error_signed)
             PdfException.Code.DynamicXfa -> str(R.string.xfa_dynamic)
+            PdfException.Code.SaveCheck -> str(R.string.error_save_check, e.values.getOrElse(0) { 0 }, e.values.getOrElse(1) { 0 })
             else -> str(R.string.error_generic, e.message ?: "")
         }
         is com.aamus.powerpdf.ocr.OcrException.Unsupported -> str(R.string.ocr_64bit)
@@ -695,6 +696,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         busy = str(R.string.saving)
         try {
             val written = session.writeOut(extra)
+            session.checkWritten(written, newPassword ?: session.doc.password)
             val overwrite = !forceCopy && !askWhere && prefs.saveMode == SaveMode.Overwrite && session.source != null
             if (overwrite && session.canOverwrite) {
                 withContext(Dispatchers.IO) { Files.writeTo(context, written, session.source!!) }
@@ -743,7 +745,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             else say(str(R.string.saved_to, com.aamus.powerpdf.ui.bidi(place)), long = true)
             return true
         } catch (e: Throwable) {
-            say(str(R.string.save_failed, e.message ?: e.javaClass.simpleName), long = true)
+            say(if (e is PdfException && e.code == PdfException.Code.SaveCheck) errorText(e) else str(R.string.save_failed, e.message ?: e.javaClass.simpleName), long = true)
             return false
         } finally {
             busy = null
@@ -799,7 +801,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 uri to "${str(R.string.downloads_place)} › $shown"
             }
         } catch (e: Throwable) {
-            say(str(R.string.save_failed, e.message ?: e.javaClass.simpleName), long = true)
+            say(if (e is PdfException && e.code == PdfException.Code.SaveCheck) errorText(e) else str(R.string.save_failed, e.message ?: e.javaClass.simpleName), long = true)
             null
         }
     }

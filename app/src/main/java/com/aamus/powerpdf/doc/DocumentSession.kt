@@ -229,9 +229,23 @@ class DocumentSession private constructor(
     private fun keepsSignatures(): Boolean =
         versions.getOrNull(position)?.appended == true && runCatching { doc.isSigned() }.getOrDefault(false)
 
+    /**
+     * Checks that [written] opens again with every page before it replaces anything (decisions
+     * §61); [password] is the one it was written with. Deletes it and throws when it does not.
+     */
+    suspend fun checkWritten(written: File, password: String? = doc.password) = PdfEngine.run {
+        try {
+            PdfEngine.checkSaved(written, password, doc.pageCount)
+        } catch (e: Throwable) {
+            written.delete()
+            throw e
+        }
+    }
+
     /** Writes the document as Save would, to [target] (sharing). */
     suspend fun writeTo(target: File) {
         val written = writeOut()
+        checkWritten(written)
         PdfEngine.run {
             try {
                 written.copyTo(target, overwrite = true)
