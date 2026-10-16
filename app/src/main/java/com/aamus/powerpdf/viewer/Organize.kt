@@ -152,7 +152,7 @@ fun pageList(pages: Collection<Int>): String {
 }
 
 @Composable
-fun OrganizeScreen(session: DocumentSession, onClose: () -> Unit, onOpenPage: (Int) -> Unit) {
+fun OrganizeScreen(session: DocumentSession, current: Int = 0, onClose: () -> Unit, onOpenPage: (Int) -> Unit) {
     val model = LocalModel.current
     val scope = rememberCoroutineScope()
     val state by session.state.collectAsStateWithLifecycle()
@@ -161,7 +161,8 @@ fun OrganizeScreen(session: DocumentSession, onClose: () -> Unit, onOpenPage: (I
     var selected by remember { mutableStateOf(setOf<Int>()) }
     var confirmDelete by remember { mutableStateOf(false) }
     var insertMenu by remember { mutableStateOf(false) }
-    val grid = rememberLazyGridState()
+    // Organize opens on the page being read, as Acrobat does.
+    val grid = rememberLazyGridState(initialFirstVisibleItemIndex = current.coerceIn(0, maxOf(0, state.pageCount - 1)))
 
     // Drag to move: which page, where the finger is, where it would land.
     var dragging by remember { mutableStateOf<Int?>(null) }

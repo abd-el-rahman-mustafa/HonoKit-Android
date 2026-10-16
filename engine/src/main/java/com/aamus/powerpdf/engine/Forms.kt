@@ -189,6 +189,45 @@ internal fun fieldOf(widget: PDFObject): PDFObject {
     return if (widget.get("T").isString || !parent.isDictionary) widget else parent
 }
 
+/** The field's fully qualified name: its /T after its ancestors', joined with dots. */
+internal fun fullNameOf(field: PDFObject): String {
+    val parts = ArrayList<String>()
+    var o = field
+    for (k in 0 until 32) {
+        if (!o.isDictionary) break
+        val t = o.get("T")
+        if (t.isString) parts.add(0, t.asString())
+        o = o.get("Parent")
+    }
+    return parts.joinToString(".")
+}
+
+/**
+ * Other field dictionaries of the form with [field]'s fully qualified name and type [ft]: one
+ * field by the standard, written as several by some programs. Bounded, so a looping tree ends.
+ */
+internal fun PdfDoc.twinsOf(field: PDFObject, ft: String): List<PDFObject> {
+    val name = fullNameOf(field)
+    val self = numOf(field)
+    if (name.isEmpty() || self < 0) return emptyList()
+    val acro = runCatching { pdf.trailer.get("Root").get("AcroForm") }.getOrNull() ?: return emptyList()
+    val fields = if (acro.isDictionary) acro.get("Fields") else return emptyList()
+    if (!fields.isArray) return emptyList()
+    val twins = ArrayList<PDFObject>()
+    val seen = HashSet<Int>()
+    fun walk(node: PDFObject, depth: Int) {
+        if (depth > 32 || seen.size > 20_000 || !node.isDictionary) return
+        val num = numOf(node)
+        if (num >= 0 && !seen.add(num)) return
+        val type = node.getInheritable("FT")
+        if (num >= 0 && num != self && node.get("T").isString && type.isName && type.asName() == ft && fullNameOf(node) == name) twins.add(node)
+        val kids = node.get("Kids")
+        if (kids.isArray) for (i in 0 until kids.size()) walk(kids.get(i), depth + 1)
+    }
+    for (i in 0 until fields.size()) walk(fields.get(i), 0)
+    return twins
+}
+
 /** Every widget of [field] (itself when field and widget are one dictionary). */
 internal fun widgetsOf(field: PDFObject, depth: Int = 0): List<PDFObject> {
     val kids = field.get("Kids")
@@ -423,8 +462,17 @@ fun PdfDoc.setField(pageIndex: Int, index: Int, text: String? = null, checked: B
                 // The page's own reference to the widget, so its object number is known.
                 val self = annotEntry(page, w.getObject()) ?: w.getObject()
                 val selfNum = numOf(self)
-                // This widget first, then the field's other widgets (F2).
-                val widgets = listOf(self) + widgetsOf(fieldOf(self)).filter { numOf(it) > 0 && numOf(it) != selfNum }
+                // This widget first, then the field's other widgets (F2), then the widgets of
+                // fields with the same fully qualified name: one field by the standard
+                // (PDF 32000 §12.7.3.1), written as several by some programs; each gets the
+                // value, or Acrobat shows whichever /V it reads first and the typed value seems lost.
+                val field = fieldOf(self)
+                val twins = twinsOf(field, "Tx")
+                for (t in twins) {
+                    t.put("V", pdf.newString(value))
+                    t.delete("RV")
+                }
+                val widgets = listOf(self) + widgetsOf(field).filter { numOf(it) > 0 && numOf(it) != selfNum } + twins.flatMap { widgetsOf(it) }.filter { numOf(it) > 0 }
                 val password = fieldFlags(self) and FF_PASSWORD != 0
                 // MuPDF writes its own fitted size into /DA; each widget's setting is kept.
                 val das = widgets.map { daOfObject(it) }

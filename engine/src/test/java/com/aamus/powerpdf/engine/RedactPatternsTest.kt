@@ -43,6 +43,18 @@ class RedactPatternsTest {
     }
 
     @Test
+    fun theTailOfALongerNumberIsNotAPhoneNumber() {
+        // The last groups of a social security number, a card or a reference used to match as a
+        // phone number, and the start of the identifier stayed readable.
+        for (s in listOf("NIR 1 85 05 78 006 084 36 end", "Ref 1234 0012 3456 7890 1234", "Card 4532 0012 3456 7890", "Order 2026 0501234567")) {
+            assertEquals(s, emptyList<String>(), found(s, RedactPattern.Phone))
+        }
+        assertEquals(listOf("+33 1 23 45 67 89"), found("tel +33 1 23 45 67 89 ext 12", RedactPattern.Phone))
+        // Nor the head of a run that goes on past a phone number's length.
+        assertEquals(emptyList<String>(), found("mobile 050 123 4567 8901 2345", RedactPattern.Phone))
+    }
+
+    @Test
     fun arabicIndicDigitsCountAsDigits() {
         val text = RedactPatterns.westernDigits("الهوية ٧٨٤-١٩٩٠-١٢٣٤٥٦٧-١")
         assertEquals(listOf("784-1990-1234567-1"), found(text, RedactPattern.EmiratesId))

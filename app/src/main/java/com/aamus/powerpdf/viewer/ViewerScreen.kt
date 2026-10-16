@@ -535,7 +535,7 @@ private fun Viewer(session: DocumentSession, startTool: ToolId?, startEditing: B
             },
     ) {
         if (mode == Mode.Organize) {
-            OrganizeScreen(session, onClose = { mode = Mode.Read }, onOpenPage = { p -> mode = Mode.Read; viewport.scrollToPage(p) })
+            OrganizeScreen(session, current = viewport.currentPage(), onClose = { mode = Mode.Read }, onOpenPage = { p -> mode = Mode.Read; viewport.scrollToPage(p) })
             return@Box
         }
 
