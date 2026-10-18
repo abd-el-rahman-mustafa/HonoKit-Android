@@ -64,7 +64,10 @@ fun PdfDoc.safeRedact(
                 val mark = page.newAnnot(PDFAnnotation.TYPE_REDACT)
                 mark.rect = Rect(b.x0, b.y0, b.x1, b.y1)
             }
-            page.applyRedactions(blackBoxes, images.mupdf, lineArt.mupdf, if (keepText) PDFPage.REDACT_TEXT_NONE else PDFPage.REDACT_TEXT_REMOVE)
+            // The removed text's /ActualText and /Alt go with it.
+            clearReplacementText(pageIndex) {
+                page.applyRedactions(blackBoxes, images.mupdf, lineArt.mupdf, if (keepText) PDFPage.REDACT_TEXT_NONE else PDFPage.REDACT_TEXT_REMOVE)
+            }
         }
     } finally {
         for ((obj, subtype) in renamed) {

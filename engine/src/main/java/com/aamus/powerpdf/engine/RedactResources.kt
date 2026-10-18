@@ -34,7 +34,7 @@ internal fun PdfDoc.unlinkRemoved(before: Map<Int, Set<Int>>): Int {
     val removed = before.values.flatten().filter { it !in kept }.toSet()
     if (removed.isEmpty()) return 0
     var unlinked = 0
-    for (group in xobjectGroups().values) {
+    for (group in xobjectGroups("XObject").values) {
         val names = ArrayList<String>()
         for (key in group.xobj) {
             val v = group.xobj.get(key)
@@ -56,13 +56,13 @@ private class XGroup(val xobj: PDFObject, val pages: MutableList<PDFObject> = Ar
  * directly in a node's /Resources is told apart by that node; one that is an object of its own (or
  * inside a /Resources that is) by its object number, so a dictionary shared by nodes is one group.
  */
-private fun PdfDoc.xobjectGroups(): Map<String, XGroup> {
+private fun PdfDoc.xobjectGroups(kind: String): Map<String, XGroup> {
     val out = LinkedHashMap<String, XGroup>()
     val seen = HashSet<Int>()
     fun groupOf(node: PDFObject): String? {
         val res = node.get("Resources")
         if (!res.isDictionary) return null
-        val xobj = res.get("XObject")
+        val xobj = res.get(kind)
         if (!xobj.isDictionary) return null
         val key = when {
             xobj.isIndirect -> "x${xobj.asIndirect()}"
@@ -87,6 +87,25 @@ private fun PdfDoc.xobjectGroups(): Map<String, XGroup> {
     }
     visit(pdf.trailer.get("Root").get("Pages"), null, 0)
     return out
+}
+
+/**
+ * Removes marked-content property lists named [names] (their /ActualText or /Alt described text a
+ * redaction removed) from every page-tree /Properties dictionary that no page drawing through it
+ * still names them in. Returns how many entries went.
+ */
+internal fun PdfDoc.unlinkProperties(names: Set<String>): Int {
+    if (names.isEmpty()) return 0
+    var unlinked = 0
+    for (group in xobjectGroups("Properties").values) {
+        for (name in names) {
+            if (group.xobj.get(name).isNull) continue
+            if (group.pages.any { drawsName(it, group.xobj, name) }) continue
+            group.xobj.delete(name)
+            unlinked++
+        }
+    }
+    return unlinked
 }
 
 /**

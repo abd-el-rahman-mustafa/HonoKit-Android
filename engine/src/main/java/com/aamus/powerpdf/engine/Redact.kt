@@ -401,8 +401,11 @@ fun PdfDoc.applyRedactions(fill: Rgb, label: String?, sanitize: Boolean): Redact
     for (p in pages) {
         // MuPDF's rewrite of the page misreads T*, ' and " after a Td (desktop §58).
         runCatching { explicitLeading(p) }
-        withPdfPage(p) { page ->
-            page.applyRedactions(false, PDFPage.REDACT_IMAGE_PIXELS, PDFPage.REDACT_LINE_ART_REMOVE_IF_COVERED, PDFPage.REDACT_TEXT_REMOVE)
+        // The removed text's /ActualText and /Alt go with it.
+        clearReplacementText(p) {
+            withPdfPage(p) { page ->
+                page.applyRedactions(false, PDFPage.REDACT_IMAGE_PIXELS, PDFPage.REDACT_LINE_ART_REMOVE_IF_COVERED, PDFPage.REDACT_TEXT_REMOVE)
+            }
         }
     }
     // What went may still be named by resources the page shared with others (inherited, shared).
