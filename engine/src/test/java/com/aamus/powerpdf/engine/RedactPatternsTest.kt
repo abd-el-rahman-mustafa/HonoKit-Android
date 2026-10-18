@@ -17,6 +17,18 @@ class RedactPatternsTest {
     }
 
     @Test
+    fun aCardFollowedByAnExpiryYearOrCvvIsFound() {
+        // A trailing number made the run fail the Luhn check, and the card stayed unmarked.
+        for (tail in listOf("12/26", "2026", "123", "12 26")) {
+            assertEquals(tail, listOf("4111 1111 1111 1111"), found("visa 4111 1111 1111 1111 $tail", RedactPattern.Card))
+        }
+        assertEquals(listOf("3782-822463-10005"), found("amex 3782-822463-10005 123", RedactPattern.Card))
+        assertEquals(emptyList<String>(), found("bad 4111 1111 1111 1112 12/26", RedactPattern.Card))
+        // A longer grouped number does not match on a card-shaped start.
+        assertEquals(emptyList<String>(), found("long 4111 1111 1111 1111 0000 0000", RedactPattern.Card))
+    }
+
+    @Test
     fun ibanNeedsItsChecksum() {
         assertTrue(RedactPatterns.ibanValid("AE07 0331 2345 6789 0123 456"))
         assertFalse(RedactPatterns.ibanValid("AE08 0331 2345 6789 0123 456"))

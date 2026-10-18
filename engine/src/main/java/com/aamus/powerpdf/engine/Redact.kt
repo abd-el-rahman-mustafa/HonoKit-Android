@@ -37,7 +37,8 @@ object RedactPatterns {
         RedactPattern.EmiratesId to Regex("""\b784[\s-]?\d{4}[\s-]?\d{7}[\s-]?\d\b"""),
         // Case-insensitive because lines are matched folded; the checksum keeps it from matching words.
         RedactPattern.Iban to Regex("""\b[a-z]{2}\d{2}(?:\s?[a-z0-9]{4}){2,7}(?:\s?[a-z0-9]{1,4})?\b""", RegexOption.IGNORE_CASE),
-        RedactPattern.Card to Regex("""\b(?:\d[\s-]?){12,18}\d\b"""),
+        // A whole run of digit groups; cardEnd finds the card in it.
+        RedactPattern.Card to Regex("""\b\d(?:[\s-]?\d)*\b"""),
         RedactPattern.Date to Regex("""\b(?:\d{1,2}[/.-]\d{1,2}[/.-](?:\d{4}|\d{2})|\d{4}-\d{2}-\d{2})\b"""),
     )
 
@@ -53,6 +54,23 @@ object RedactPatterns {
             sum += d
         }
         return digits.length >= 13 && sum % 10 == 0
+    }
+
+    /**
+     * Where the card number in a run of digit groups ends, or -1. The run may carry a trailing
+     * number (an expiry, a year, a CVV), so the whole run is tried, then each shorter one ending at
+     * a group boundary, longest first. At most four digits are dropped, so a longer number (an
+     * IBAN's digits) does not match on a card-shaped start.
+     */
+    fun cardEnd(run: String): Int {
+        val total = run.count { it.isDigit() }
+        for (e in run.length downTo 1) {
+            if (!run[e - 1].isDigit() || (e < run.length && run[e].isDigit())) continue
+            val digits = run.substring(0, e).filter { it.isDigit() }
+            if (total - digits.length > 4) break
+            if (digits.length in 13..19 && luhn(digits)) return e
+        }
+        return -1
     }
 
     /** The IBAN check (ISO 13616): the number, rearranged and read in base 36, leaves 1 divided by 97. */
@@ -84,7 +102,7 @@ object RedactPatterns {
         PATTERNS.getValue(pattern).findAll(text).mapNotNull { m ->
             val v = m.value
             when {
-                pattern == RedactPattern.Card && !luhn(v.filter { it.isDigit() }) -> null
+                pattern == RedactPattern.Card -> cardEnd(v).takeIf { it > 0 }?.let { m.range.first until m.range.first + it }
                 pattern == RedactPattern.Iban && !ibanValid(v) -> null
                 pattern == RedactPattern.Phone && v.count { it.isDigit() } < 8 -> null
                 else -> m.range
