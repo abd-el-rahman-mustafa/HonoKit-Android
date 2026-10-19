@@ -58,12 +58,37 @@ object Xmp {
      * ("accessible"), need the structure tree. PDF/X, PDF/A-b/u and the rest stay.
      */
     fun withdrawn(xmp: String): String {
-        if (!xmp.contains("pdfuaid") && !xmp.contains("pdfaid")) return xmp
-        var next = drop(drop(xmp, "pdfuaid:part"), "pdfuaid:rev")
-        if (value(next, "pdfaid:conformance").equals("a", ignoreCase = true)) {
-            for (p in listOf("pdfaid:part", "pdfaid:conformance", "pdfaid:amd", "pdfaid:rev")) next = drop(next, p)
+        if (!xmp.contains("pdfuaid") && !xmp.contains("pdfaid") && !xmp.contains(PDFA_NS) && !xmp.contains(PDFUA_NS)) return xmp
+        var next = xmp
+        for (ua in prefixes(xmp, PDFUA_NS, "pdfuaid")) for (p in listOf("part", "rev")) next = drop(next, "$ua:$p")
+        for (a in prefixes(xmp, PDFA_NS, "pdfaid")) {
+            if (value(next, "$a:conformance").equals("a", ignoreCase = true)) {
+                for (p in listOf("part", "conformance", "amd", "rev")) next = drop(next, "$a:$p")
+            }
         }
         return next
+    }
+
+    const val PDFA_NS = "http://www.aiim.org/pdfa/ns/id/"
+    const val PDFUA_NS = "http://www.aiim.org/pdfua/ns/id/"
+
+    /**
+     * The prefixes the packet binds to the namespace [uri], the usual one first (packets that leave
+     * it undeclared still use it). The identification is the namespace, not the prefix: a file may
+     * write `ida:part` for PDF/A.
+     */
+    fun prefixes(xmp: String, uri: String, usual: String): List<String> {
+        val out = linkedSetOf(usual)
+        for (m in Regex("xmlns:([A-Za-z_][A-Za-z0-9_-]{0,40})\\s*=\\s*[\"']([^\"']{0,200})[\"']").findAll(xmp.take(1_000_000))) {
+            if (m.groupValues[2].trim() == uri) out.add(m.groupValues[1])
+        }
+        return out.toList()
+    }
+
+    /** A property of the namespace [uri] under any prefix the packet gives it; "" when absent. */
+    fun valueIn(xmp: String, uri: String, usual: String, local: String): String {
+        for (p in prefixes(xmp, uri, usual)) value(xmp, "$p:$local").let { if (it.isNotEmpty()) return it }
+        return ""
     }
 
     private fun escape(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
@@ -112,8 +137,8 @@ internal fun PDFDocument.printStandard(): PrintStandard? = runCatching {
     val xmp = metadataXml()
     fun fromInfo(key: String) = if (info.isDictionary) clean(textOf(info.get(key))) else ""
     val pdfx = xmp.contains(Xmp.PDFX_NS)
-    val version = fromInfo("GTS_PDFXVersion").ifEmpty { if (pdfx) clean(Xmp.value(xmp, "pdfxid:GTS_PDFXVersion")) else "" }
-    val conformance = fromInfo("GTS_PDFXConformance").ifEmpty { if (pdfx) clean(Xmp.value(xmp, "pdfxid:GTS_PDFXConformance")) else "" }
+    val version = fromInfo("GTS_PDFXVersion").ifEmpty { if (pdfx) clean(Xmp.valueIn(xmp, Xmp.PDFX_NS, "pdfxid", "GTS_PDFXVersion")) else "" }
+    val conformance = fromInfo("GTS_PDFXConformance").ifEmpty { if (pdfx) clean(Xmp.valueIn(xmp, Xmp.PDFX_NS, "pdfxid", "GTS_PDFXConformance")) else "" }
     val trapped = if (info.isDictionary && info.get("Trapped").isName) info.get("Trapped").asName() else ""
     val list = root.get("OutputIntents")
     val intents = if (list.isArray && list.size() > 0) list else null

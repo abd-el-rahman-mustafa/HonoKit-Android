@@ -159,6 +159,16 @@ class UpdatesLogicTest {
     }
 
     @Test
+    fun theIdentificationIsReadByItsNamespaceWhateverItsPrefix() {
+        val ns = "xmlns:ida=\"http://www.aiim.org/pdfa/ns/id/\" xmlns:idua=\"http://www.aiim.org/pdfua/ns/id/\" xmlns:idx=\"http://www.npes.org/pdfx/ns/id/\""
+        val xmp = "<rdf:Description rdf:about=\"\" $ns idx:GTS_PDFXVersion=\"PDF/X-4\" ida:part=\"2\" ida:conformance=\"A\" idua:part=\"1\"/>"
+        assertEquals("PDF/X-4", Xmp.valueIn(xmp, Xmp.PDFX_NS, "pdfxid", "GTS_PDFXVersion"))
+        val out = Xmp.withdrawn(xmp)
+        assertTrue("PDF/X-4" in out)
+        for (gone in listOf("idua:part", "ida:part", "ida:conformance")) assertFalse("$gone kept: $out", gone in out)
+    }
+
+    @Test
     fun aPdfALevelBClaimStays() {
         val xmp = packet("pdfaid:part=\"2\" pdfaid:conformance=\"B\" pdfuaid:part=\"1\"")
         val out = Xmp.withdrawn(xmp)
