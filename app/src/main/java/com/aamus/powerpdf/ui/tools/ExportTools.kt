@@ -29,6 +29,7 @@ import com.aamus.powerpdf.data.Files
 import com.aamus.powerpdf.doc.DocumentSession
 import com.aamus.powerpdf.engine.PdfFiles
 import com.aamus.powerpdf.engine.exportText
+import com.aamus.powerpdf.engine.img.ImageDpi
 import com.aamus.powerpdf.ui.Field
 import com.aamus.powerpdf.ui.Group
 import com.aamus.powerpdf.ui.GroupDivider
@@ -91,7 +92,9 @@ fun ToImagesTool(session: DocumentSession) {
                         val px = (wanted * fit).roundToInt().coerceIn(100, 6000)
                         val bmp = session.engine { it.renderWidth(p, px) }
                         try {
-                            ByteArrayOutputStream().also { bmp.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, 90, it) }.toByteArray()
+                            val encoded = ByteArrayOutputStream().also { bmp.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, 90, it) }.toByteArray()
+                            // The resolution it was drawn at, so other programs show and print it at its size.
+                            ImageDpi.withDpi(encoded, (bmp.width * 72f / pt.width).roundToInt())
                         } finally {
                             bmp.recycle()
                         }
