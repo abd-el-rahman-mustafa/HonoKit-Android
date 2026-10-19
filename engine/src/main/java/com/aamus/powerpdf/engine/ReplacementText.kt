@@ -23,6 +23,7 @@ import com.artifex.mupdf.fitz.PDFObject
  */
 object ReplacementText {
     internal val KEYS = setOf("ActualText", "Alt", "E", "T")
+    internal val MCID = Regex("/MCID (\\d+)")
     private val DRAWS = setOf("Tj", "TJ", "'", "\"", "Do", "EI", "sh")
 
     class Span(val tag: String) {
@@ -177,13 +178,15 @@ object ReplacementText {
 
 /** Runs [removal] on page [index], then clears the replacement text of the spans it changed (see [ReplacementText]). */
 internal fun <T> PdfDoc.clearReplacementText(index: Int, removal: () -> T): T {
-    val before = HashMap<String, Int>()
+    // Each span's key, with the MCIDs of the spans that have it (one entry per span).
+    val before = HashMap<String, ArrayDeque<Int?>>()
     runCatching {
         for (span in ReplacementText.spans(streamsOf(index).joinToString(" ") { String(it.readStream(), Charsets.ISO_8859_1) })) {
-            before[span.key] = (before[span.key] ?: 0) + 1
+            before.getOrPut(span.key) { ArrayDeque() }.addLast(mcidOf(index, span))
         }
     }
     val result = removal()
+    val changedMcids = HashSet<Int>()
     val page = pdf.findPage(index)
     val contents = page.get("Contents")
     val items = streamsOf(index)
@@ -196,11 +199,12 @@ internal fun <T> PdfDoc.clearReplacementText(index: Int, removal: () -> T): T {
         val edits = ArrayList<Edit>()
         for (span in ReplacementText.spans(source)) {
             if (span.start < 0) continue
-            val left = before[span.key] ?: 0
-            if (left > 0) {
-                before[span.key] = left - 1
+            val left = before[span.key]
+            if (left != null && left.isNotEmpty()) {
+                left.removeFirst()
                 continue
             }
+            mcidOf(index, span)?.let { changedMcids.add(it) }
             val named = span.named
             if (named != null) {
                 val dict = namedProperties(index, named) ?: continue
@@ -237,7 +241,20 @@ internal fun <T> PdfDoc.clearReplacementText(index: Int, removal: () -> T): T {
         } else page.put("Contents", out[0])
     }
     if (retired.isNotEmpty()) retireProperties(index, retired)
+    // Spans the removal took away altogether; then the structure tree's elements tagging them.
+    for (list in before.values) for (mcid in list) if (mcid != null) changedMcids.add(mcid)
+    clearTagText(index, changedMcids)
     return result
+}
+
+/** The span's marked-content ID, from its inline dictionary or the named one. */
+private fun PdfDoc.mcidOf(index: Int, span: ReplacementText.Span): Int? {
+    val named = span.named
+    if (named != null) {
+        val id = namedProperties(index, named)?.get("MCID") ?: return null
+        return if (id.isInteger) id.asInteger() else null
+    }
+    return ReplacementText.MCID.find(span.props)?.groupValues?.get(1)?.toIntOrNull()
 }
 
 private fun PdfDoc.streamsOf(index: Int): List<PDFObject> {

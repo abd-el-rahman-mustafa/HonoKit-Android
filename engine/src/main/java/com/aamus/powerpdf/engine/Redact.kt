@@ -458,6 +458,8 @@ fun PdfDoc.applyRedactions(fill: Rgb, label: String?, sanitize: Boolean): Redact
     }
     val overlays = pages.associateWith { p -> xobjectNames(pdf.findPage(p)) - before[p].orEmpty() }
     if (sanitize) sanitize()
+    // A removed comment's tag would still write it, its text included, into the file.
+    dropRemovedAnnotRefs()
     invalidate()
     // R1: the next save (the session's version, or Save) is a full, garbage-collected rewrite.
     rewriteFully = true

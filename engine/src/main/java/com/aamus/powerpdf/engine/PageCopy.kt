@@ -204,7 +204,7 @@ internal fun PDFDocument.separateRepeats() {
 // --- The catalogue after rearranging (P3) ------------------------------------------------------
 
 /** The entries of a number tree (/Nums, /Kids), flattened and sorted by key. */
-private fun numberTree(tree: PDFObject): List<Pair<Int, PDFObject>> {
+internal fun numberTree(tree: PDFObject): List<Pair<Int, PDFObject>> {
     val out = ArrayList<Pair<Int, PDFObject>>()
     walkTree(tree, "Nums", 0, HashSet()) { key, value ->
         if (key.isNumber) out.add(key.asInteger() to value)
@@ -214,7 +214,7 @@ private fun numberTree(tree: PDFObject): List<Pair<Int, PDFObject>> {
 }
 
 /** The entries of a name tree (/Names, /Kids), flattened. */
-private fun nameTree(tree: PDFObject): List<Pair<PDFObject, PDFObject>> {
+internal fun nameTree(tree: PDFObject): List<Pair<PDFObject, PDFObject>> {
     val out = ArrayList<Pair<PDFObject, PDFObject>>()
     walkTree(tree, "Names", 0, HashSet()) { key, value ->
         out.add(key to value)
