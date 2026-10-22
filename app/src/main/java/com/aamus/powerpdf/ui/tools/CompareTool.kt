@@ -77,7 +77,9 @@ fun CompareTool(session: DocumentSession) {
                 tooDifferent = found == null
                 result = found ?: emptyList()
             } catch (e: Throwable) {
-                model.say(model.errorText(e))
+                // A comparison lists the words, so a file that forbids copying is not compared.
+                val restricted = e is com.aamus.powerpdf.engine.PdfException && e.code == com.aamus.powerpdf.engine.PdfException.Code.Restricted
+                model.say(if (restricted) model.str(R.string.copy_not_allowed) else model.errorText(e), long = restricted)
             } finally {
                 model.busy = null
                 kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { PdfEngine.run { other.close() } }

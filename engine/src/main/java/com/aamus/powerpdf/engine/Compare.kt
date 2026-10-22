@@ -250,8 +250,12 @@ object TextDiff {
         (from until minOf(to, words.size)).map { words[it].page }.distinct().size <= 1
 }
 
-/** Every word of the document in reading order, with its page. */
+/**
+ * Every word of the document in reading order, with its page. A comparison shows and lists them,
+ * so it needs the author's permission to copy the text.
+ */
 fun PdfDoc.words(progress: (Int) -> Unit = {}): List<DocWord> {
+    if (!rights().copy) throw PdfException(PdfException.Code.Restricted, "The author of this PDF does not allow copying its text, so it cannot be compared.")
     val out = ArrayList<DocWord>()
     for (p in 0 until pageCount) {
         progress(p)
