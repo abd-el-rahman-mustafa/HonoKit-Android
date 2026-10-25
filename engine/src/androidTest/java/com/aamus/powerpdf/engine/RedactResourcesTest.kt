@@ -86,6 +86,68 @@ class RedactResourcesTest {
         assertFalse(samples in redacted(src))
     }
 
+    /**
+     * A form on a page that was not redacted draws the picture through the dictionary all three
+     * share. Reading only forms without /Resources of their own missed that, and the name was
+     * unlinked, so the picture vanished from a page with nothing redacted on it (desktop §102).
+     */
+    @Test
+    fun aPictureAFormOnAnotherPageDrawsThroughTheSharedResourcesIsKept() {
+        val src = build(
+            listOf(
+                "<< /Type /Catalog /Pages 2 0 R >>",
+                "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 /MediaBox [0 0 400 400] >>",
+                "<< /Type /Page /Parent 2 0 R /Resources 9 0 R /Contents 7 0 R >>",
+                "<< /Type /Page /Parent 2 0 R /Resources 9 0 R /Contents 8 0 R >>",
+                "<< /Type /XObject /Subtype /Form /BBox [0 0 400 400] /Resources 9 0 R /Length LEN >>",
+                image, "<< /Length LEN >>", "<< /Length LEN >>",
+                "<< /XObject << /Im0 6 0 R /Fx 5 0 R >> >>"
+            ),
+            mapOf(5 to draw, 6 to samples, 7 to draw, 8 to "q /Fx Do Q")
+        )
+        assertTrue(samples in redacted(src))
+    }
+
+    /**
+     * An annotation written as a dictionary of its own in /Annots, with no object number: it used
+     * to be skipped, so a comment under a mark stayed in the file, and an inline reply kept the
+     * comment it answered — its text included — in it while the page looked clean (desktop §102).
+     */
+    @Test
+    fun aCommentWrittenStraightIntoThePageListIsTakenOffAMark() {
+        val secret = "TopSecretCommentText"
+        val src = build(
+            listOf(
+                "<< /Type /Catalog /Pages 2 0 R >>",
+                "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 400 400] >>",
+                "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Annots [<< /Type /Annot /Subtype /Text /Rect [100 100 120 120] /Contents ($secret) >>] >>",
+                "<< /Length LEN >>"
+            ),
+            mapOf(4 to nothing)
+        )
+        assertTrue(secret in Fixtures.allStreams(src))
+        assertFalse(secret in redacted(src))
+    }
+
+    @Test
+    fun aReplyWrittenStraightIntoThePageListGoesWithTheCommentItAnswers() {
+        val secret = "TopSecretCommentText"
+        val src = build(
+            listOf(
+                "<< /Type /Catalog /Pages 2 0 R >>",
+                "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 400 400] >>",
+                "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Annots [5 0 R << /Type /Annot /Subtype /Text /Rect [360 360 380 380] /Contents (Reply) /IRT 5 0 R >>] >>",
+                "<< /Length LEN >>",
+                "<< /Type /Annot /Subtype /Text /Rect [100 100 120 120] /Contents ($secret) >>"
+            ),
+            mapOf(4 to nothing)
+        )
+        assertTrue(secret in Fixtures.allStreams(src))
+        val out = redacted(src)
+        assertFalse(secret in out)
+        assertFalse("(Reply)" in out)
+    }
+
     @Test
     fun aPictureAnotherPageStillDrawsIsKept() {
         val src = build(

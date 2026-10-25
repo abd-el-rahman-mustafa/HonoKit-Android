@@ -110,18 +110,30 @@ internal fun PdfDoc.unlinkProperties(names: Set<String>): Int {
 
 /**
  * Whether [page] still uses [name] from [xobj]: as a name in its content, or in a form of that
- * dictionary without /Resources of its own (it draws through the page's). A content stream that
- * cannot be read fails the redaction rather than guessing.
+ * dictionary that draws through it. A form draws through it when it has no /Resources of its own,
+ * when its /Resources is the very dictionary the page uses, or when its /Resources names this
+ * same dictionary of names — all three are ordinary ways to write a shared one, and reading only
+ * the first took a name a form still drew with, so a picture vanished from a page that had
+ * nothing redacted on it (desktop §102). A content stream that cannot be read fails the
+ * redaction rather than guessing.
  */
 private fun drawsName(page: PDFObject, xobj: PDFObject, name: String): Boolean {
     val streams = ArrayList<PDFObject>()
     val contents = page.get("Contents")
     if (contents.isArray) for (i in 0 until contents.size()) streams.add(contents.get(i))
     else if (contents.isStream) streams.add(contents)
+    val pageRes = numOf(page.getInheritable("Resources"))
+    val dict = numOf(xobj)
+    /** Whether a form's /Resources leads back to this very dictionary of names. */
+    fun through(res: PDFObject): Boolean {
+        if (!res.isDictionary) return true
+        if (pageRes > 0 && numOf(res) == pageRes) return true
+        return dict > 0 && listOf("XObject", "Properties").any { numOf(res.get(it)) == dict }
+    }
     for (key in xobj) {
         val v = xobj.get(key)
         val sub = v.get("Subtype")
-        if (v.isStream && sub.isName && sub.asName() == "Form" && !v.get("Resources").isDictionary) streams.add(v)
+        if (v.isStream && sub.isName && sub.asName() == "Form" && through(v.get("Resources"))) streams.add(v)
     }
     for (s in streams) {
         val bytes = try {

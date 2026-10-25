@@ -415,6 +415,8 @@ class PdfDoc private constructor(
     /** Appends the changes to the file the document was opened from (fast: only what changed). */
     fun saveIncremental() {
         val f = file ?: throw PdfException(PdfException.Code.Io, "No file to save into.")
+        // No file ever carries what someone typed into a password field (desktop §99).
+        if (hasPasswordValues()) clearPasswordValues()
         pdf.save(f.absolutePath, "incremental")
     }
 
@@ -425,6 +427,8 @@ class PdfDoc private constructor(
      * otherwise a quick snapshot. Extra MuPDF write options (encryption) go in [extra].
      */
     fun save(target: File, final: Boolean = true, extra: String? = null) {
+        // No file ever carries what someone typed into a password field (desktop §99).
+        if (hasPasswordValues()) clearPasswordValues()
         val options = buildString {
             append(if (final) SAVE_FINAL else SAVE_SNAPSHOT)
             // Nothing removed by a redaction may stay behind as an unused object (R1).

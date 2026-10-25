@@ -158,19 +158,33 @@ class AnnotFixTest {
         }
     }
 
-    /** F1: a password field shows bullets, never the characters. */
+    /**
+     * F1: a password field shows bullets, never the characters — and the bullets count the value
+     * the file holds, its default, never the typed one, which is written to no file at all
+     * (desktop §99). Without a default the field is saved empty, as Acrobat saves it.
+     */
     @Test
-    fun aPasswordFieldIsDrawnAsBullets() {
+    fun aPasswordFieldIsDrawnAsBulletsOfItsSavedValue() {
         var doc = Fixtures.open(Fixtures.pdf())
         FormFixtures.addFields(doc, listOf(FormFixtures.Spec("Pin", "Tx", Box(40f, 40f, 240f, 64f), password = true)))
         doc = Fixtures.reopen(doc)
         try {
             doc.setField(0, 0, text = "abc123")
             doc = Fixtures.reopen(doc)
-            val shown = Fixtures.shownText(doc)
+            var shown = Fixtures.shownText(doc)
             assertFalse("the password shows: $shown", "abc" in shown)
-            assertTrue("no bullets: $shown", "••••••" in shown)
-            assertEquals("abc123", doc.formFields(0).single().value)
+            assertFalse("the length of the typed password shows: $shown", "•" in shown)
+            assertEquals("", doc.formFields(0).single().value)
+            // With a default value, that is what the bullets count.
+            val fields = doc.pdf.trailer.get("Root").get("AcroForm").get("Fields")
+            for (i in 0 until fields.size()) fields.get(i).put("DV", doc.pdf.newString("abcde"))
+            doc = Fixtures.reopen(doc)
+            doc.setField(0, 0, text = "abc123")
+            doc = Fixtures.reopen(doc)
+            shown = Fixtures.shownText(doc)
+            assertTrue("no bullets: $shown", "•••••" in shown)
+            assertFalse("too many bullets: $shown", "••••••" in shown)
+            assertEquals("abcde", doc.formFields(0).single().value)
         } finally {
             doc.close()
         }

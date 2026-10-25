@@ -481,9 +481,13 @@ fun PdfDoc.setField(pageIndex: Int, index: Int, text: String? = null, checked: B
                 // After MuPDF's own drawing, so it does not draw over ours. Comb fields (one
                 // character per box) keep MuPDF's drawing, which spaces the characters, unless it
                 // is a password, which must show bullets (F1).
+                // A password field is drawn from the value the file will hold — its default, or
+                // nothing — never from what was typed, so the saved look does not say how long
+                // the password was (desktop §99). The value itself is taken out on every save.
+                val shown = if (password) defaultFieldText(field) ?: "" else value
                 if (!w.isComb || password) {
                     widgets.forEachIndexed { i, wd ->
-                        drawTextField(wd, value, das[i])
+                        drawTextField(wd, shown, das[i])
                         if (das[i].isNotEmpty() && wd.get("DA").isString) wd.put("DA", pdf.newString(das[i]))
                     }
                 }
@@ -503,8 +507,11 @@ fun PdfDoc.setField(pageIndex: Int, index: Int, text: String? = null, checked: B
         val acro = pdf.trailer.get("Root").get("AcroForm")
         if (acro.isDictionary) acro.delete("NeedAppearances")
     }
-    // A hybrid form's XFA would bring the old values back in Acrobat.
-    dropXfa()
+    // A hybrid form's XFA would bring the old values back in Acrobat. Taking the packet out only
+    // unlinks it: an appended save, or a plain snapshot, keeps what nothing points at, so the old
+    // values would still be in the file for anyone to read back (desktop §100). The next save
+    // writes the whole file again with its unused objects collected.
+    if (dropXfa()) rewriteFully = true
     invalidate()
 }
 

@@ -201,18 +201,31 @@ fun PdfDoc.redactionMarks(): List<Pair<Int, Box>> {
 }
 
 /** Removes the one mark at [box] (as [redactionMarks] gave it). */
-fun PdfDoc.removeRedactionMark(pageIndex: Int, box: Box) = withPdfPage(pageIndex) { page ->
-    val mark = page.annots().firstOrNull { a ->
-        a.type == PDFAnnotation.TYPE_REDACT && a.rect.let { r -> kotlin.math.abs(r.x0 - box.x0) < 1 && kotlin.math.abs(r.y0 - box.y0) < 1 && kotlin.math.abs(r.x1 - box.x1) < 1 && kotlin.math.abs(r.y1 - box.y1) < 1 }
-    } ?: throw PdfException(PdfException.Code.BadArguments, "That mark is no longer there.")
-    page.deleteAnnotation(mark)
+fun PdfDoc.removeRedactionMark(pageIndex: Int, box: Box) {
+    var num = -1
+    withPdfPage(pageIndex) { page ->
+        val mark = page.annots().firstOrNull { a ->
+            a.type == PDFAnnotation.TYPE_REDACT && a.rect.let { r -> kotlin.math.abs(r.x0 - box.x0) < 1 && kotlin.math.abs(r.y0 - box.y0) < 1 && kotlin.math.abs(r.x1 - box.x1) < 1 && kotlin.math.abs(r.y1 - box.y1) < 1 }
+        } ?: throw PdfException(PdfException.Code.BadArguments, "That mark is no longer there.")
+        num = annotNumber(page, mark)
+        page.deleteAnnotation(mark)
+    }
+    // What belongs to the mark goes with it: a reply to it, and its pop-up, would otherwise be
+    // left answering a mark that is no longer there, and keep it in the file (desktop §102).
+    if (num > 0) removeThreads(listOf(num))
     invalidate(listOf(pageIndex))
 }
 
 fun PdfDoc.clearRedactionMarks() {
+    val marks = ArrayList<Int>()
     for (p in 0 until pageCount) withPdfPage(p) { page ->
-        page.annots().filter { it.type == PDFAnnotation.TYPE_REDACT }?.forEach { page.deleteAnnotation(it) }
+        for (a in page.annots().filter { it.type == PDFAnnotation.TYPE_REDACT }) {
+            annotNumber(page, a).takeIf { it > 0 }?.let { marks.add(it) }
+            page.deleteAnnotation(a)
+        }
     }
+    // What belongs to the marks goes with them (desktop §102).
+    if (marks.isNotEmpty()) removeThreads(marks)
     invalidate()
 }
 
@@ -333,14 +346,19 @@ private fun PdfDoc.removeCovered(pageIndex: Int, boxes: List<Box>) {
     val annots = ArrayList<Int>()
     val widgets = ArrayList<PDFObject>()
     withPdfPage(pageIndex) { page ->
+        // An entry written as a dictionary of its own in /Annots has no object number to collect:
+        // it is taken off the page here, or a comment under a mark stayed in the file (desktop §102).
+        val inline = ArrayList<PDFAnnotation>()
         for (a in page.annots()) {
             val type = a.type
             // The marks themselves go when applied; a pop-up goes with its note.
             if (type == PDFAnnotation.TYPE_REDACT || type == PDFAnnotation.TYPE_POPUP || type == PDFAnnotation.TYPE_WIDGET) continue
             val b = a.bounds
             if (boxes.none { overlaps(it, Box(b.x0, b.y0, b.x1, b.y1)) }) continue
-            annotNumber(page, a).takeIf { it > 0 }?.let { annots.add(it) }
+            val num = annotNumber(page, a)
+            if (num > 0) annots.add(num) else inline.add(a)
         }
+        for (a in inline) runCatching { page.deleteAnnotation(a) }
         for (w in page.widgetList()) {
             val b = w.bounds
             if (boxes.any { overlaps(it, Box(b.x0, b.y0, b.x1, b.y1)) }) widgets.add(annotEntry(page, w.getObject()) ?: w.getObject())
@@ -415,6 +433,11 @@ fun PdfDoc.applyRedactions(fill: Rgb, label: String?, sanitize: Boolean): Redact
     val signed = isSigned()
     val pages = marks.map { it.first }.distinct()
     for (p in pages) removeCovered(p, marks.filter { it.first == p }.map { it.second })
+    // Collected before the marks are applied and taken off the pages; their replies go after.
+    val markObjects = ArrayList<Int>()
+    for (p in pages) withPdfPage(p) { page ->
+        for (a in page.annots().filter { it.type == PDFAnnotation.TYPE_REDACT }) annotNumber(page, a).takeIf { it > 0 }?.let { markObjects.add(it) }
+    }
     val drawn = xobjectsDrawn(pages)
     for (p in pages) {
         // MuPDF's rewrite of the page misreads T*, ' and " after a Td (desktop §58).
@@ -426,6 +449,9 @@ fun PdfDoc.applyRedactions(fill: Rgb, label: String?, sanitize: Boolean): Redact
             }
         }
     }
+    // A reply to a mark goes with the mark (desktop §102): left behind, its /IRT would keep the
+    // mark dictionary — the area it covered, and who marked it — in the saved file.
+    if (markObjects.isNotEmpty()) removeThreads(markObjects)
     // What went may still be named by resources the page shared with others (inherited, shared).
     unlinkRemoved(drawn)
     invalidate()

@@ -268,8 +268,55 @@ internal fun PdfDoc.removeAnnotationObjects(page: PDFPage, targets: Collection<I
     val annots = page.getObject().get("Annots")
     if (!annots.isArray) return gone
     collectThreads((0 until annots.size()).map { annots.get(it) }, gone)
+    dropInlineAnnotations(page, gone)
     dropAnnotations(page, gone)
     return gone
+}
+
+/**
+ * Whether the annotation is a reply at all: its chain of /IRT leads to a comment, as the panel
+ * reads it (`commentThreads`). Two comments whose /IRT entries point at each other, or any other
+ * loop, have no comment at their head; each is shown as a comment of its own, so removing one
+ * must leave the others where they are (desktop §101). Bounded, so a long or looping chain ends.
+ */
+private fun isReply(item: com.artifex.mupdf.fitz.PDFObject): Boolean {
+    val seen = HashSet<Int>()
+    seen.add(numOf(item))
+    var at = item
+    for (k in 0 until 256) {
+        val next = runCatching { at.get("IRT") }.getOrNull() ?: return false
+        if (!next.isDictionary) return k > 0
+        val n = numOf(next)
+        if (n < 0 || !seen.add(n)) return false
+        at = next
+    }
+    return false
+}
+
+/**
+ * Takes off [page] the entries written as a dictionary of their own in /Annots — no object number,
+ * so nothing can point at them — that belong to an annotation in [gone]. A reply written that way
+ * used to be left behind, and its /IRT then kept the comment it answered, its text included, in
+ * the saved file while the page looked clean (desktop §102). Their pop-ups join [gone].
+ */
+private fun PdfDoc.dropInlineAnnotations(page: PDFPage, gone: MutableSet<Int>) {
+    for (a in page.annots()) {
+        val o = runCatching { a.getObject() }.getOrNull() ?: continue
+        if (numOf(annotEntry(page, o) ?: o) > 0) continue
+        if (!inlineGoesWithGone(o, gone)) continue
+        runCatching { numOf(o.get("Popup")) }.getOrDefault(-1).takeIf { it > 0 }?.let { gone.add(it) }
+        runCatching { page.deleteAnnotation(a) }
+    }
+}
+
+/** Whether an entry with no object number belongs to an annotation in [gone]. */
+private fun inlineGoesWithGone(o: com.artifex.mupdf.fitz.PDFObject, gone: Set<Int>): Boolean {
+    if (numOf(o) > 0 || !runCatching { o.isDictionary }.getOrDefault(false)) return false
+    val subtype = o.get("Subtype")
+    val isPopup = subtype.isName && subtype.asName() == "Popup"
+    val irt = runCatching { numOf(o.get("IRT")) }.getOrDefault(-1)
+    val parent = runCatching { numOf(o.get("Parent")) }.getOrDefault(-1)
+    return (isReply(o) && irt in gone) || (isPopup && parent in gone)
 }
 
 /**
@@ -292,7 +339,7 @@ private fun collectThreads(items: List<com.artifex.mupdf.fitz.PDFObject>, gone: 
                 val subtype = item.get("Subtype")
                 val isPopup = subtype.isName && subtype.asName() == "Popup"
                 // A reply to a removed one, or its pop-up (only a pop-up's /Parent is an annotation).
-                if (ref(item, "IRT") in gone || (isPopup && ref(item, "Parent") in gone)) {
+                if ((isReply(item) && ref(item, "IRT") in gone) || (isPopup && ref(item, "Parent") in gone)) {
                     gone.add(n)
                     changed = true
                 }
@@ -327,8 +374,9 @@ internal fun PdfDoc.removeThreads(targets: Collection<Int>): Set<Int> {
     }
     val all = pages.flatten()
     collectThreads(all, gone)
-    val touched = pages.indices.filter { i -> pages[i].any { numOf(it) in gone } }
+    val touched = pages.indices.filter { i -> pages[i].any { numOf(it) in gone || inlineGoesWithGone(it, gone) } }
     for (i in touched) withPdfPage(i) { page ->
+        dropInlineAnnotations(page, gone)
         dropAnnotations(page, gone)
         page.update()
     }
