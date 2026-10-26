@@ -445,7 +445,12 @@ fun PdfDoc.applyRedactions(fill: Rgb, label: String?, sanitize: Boolean): Redact
         // The removed text's /ActualText and /Alt go with it.
         clearReplacementText(p) {
             withPdfPage(p) { page ->
-                page.applyRedactions(false, PDFPage.REDACT_IMAGE_PIXELS, PDFPage.REDACT_LINE_ART_REMOVE_IF_COVERED, PDFPage.REDACT_TEXT_REMOVE)
+                // A drawing goes when it touches a mark at all, not only when a mark covers it
+                // whole: a drawing that reaches past the mark's edge — an outlined word, a
+                // signature, a line of a chart — otherwise keeps every one of its drawing
+                // instructions in the file, under the painted box, for anyone to read back
+                // (desktop §105).
+                page.applyRedactions(false, PDFPage.REDACT_IMAGE_PIXELS, PDFPage.REDACT_LINE_ART_REMOVE_IF_TOUCHED, PDFPage.REDACT_TEXT_REMOVE)
             }
         }
     }
