@@ -2,39 +2,53 @@ package com.aamus.powerpdf.engine
 
 import com.artifex.mupdf.fitz.PDFObject
 
+/** The resource kinds a redaction can leave behind. */
+private val RESOURCE_KINDS = listOf("XObject", "Font")
+
 /**
  * Redaction gives a rewritten page its own pruned /Resources, but the dictionary the page drew
  * through before can still name the picture or form that was removed: one inherited from a /Pages
  * node, or one resource dictionary shared by several pages. The full rewrite keeps whatever is
  * still referenced, so the removed picture's samples would stay in the saved file.
  *
- * [xobjectsDrawn] is called on the redacted pages before the redaction, [unlinkRemoved] after it:
- * every page-tree XObject dictionary that still names an object a redacted page no longer draws
- * loses that entry, unless a page drawing through that dictionary still uses the name (the same
- * picture on another page). When a page's use of a name cannot be told, it fails closed.
+ * [resourcesDrawn] is called on the redacted pages before the redaction, [unlinkRemoved] after it:
+ * every page-tree XObject or Font dictionary that still names an object a redacted page no longer
+ * draws loses that entry, unless a page drawing through that dictionary still uses the name (the
+ * same picture on another page). When a page's use of a name cannot be told, it fails closed.
+ *
+ * A font matters as much as a picture. A font's own drawing keeps the shape of the characters it
+ * drew: a Type 3 font's glyph programs are content streams, and each may draw a picture of its
+ * own, so a scanned or bitmap-font page whose text was redacted left the ink of every redacted
+ * character in the saved file; an embedded subset's glyph outlines say which characters the text
+ * had. A font the redacted pages no longer name goes with them.
  */
-internal fun PdfDoc.xobjectsDrawn(pages: List<Int>): Map<Int, Set<Int>> =
-    pages.associateWith { refsIn(pdf.findPage(it).getInheritable("Resources")) }
+internal fun PdfDoc.resourcesDrawn(pages: List<Int>): Map<String, Map<Int, Set<Int>>> =
+    RESOURCE_KINDS.associateWith { kind ->
+        pages.associateWith { refsIn(pdf.findPage(it).getInheritable("Resources"), kind) }
+    }
 
-private fun refsIn(res: PDFObject): Set<Int> {
+private fun refsIn(res: PDFObject, kind: String): Set<Int> {
     if (!res.isDictionary) return emptySet()
-    val xobj = res.get("XObject")
-    if (!xobj.isDictionary) return emptySet()
+    val named = res.get(kind)
+    if (!named.isDictionary) return emptySet()
     val out = HashSet<Int>()
-    for (key in xobj) {
-        val v = xobj.get(key)
+    for (key in named) {
+        val v = named.get(key)
         if (v.isIndirect) out.add(v.asIndirect())
     }
     return out
 }
 
 /** Removes what the redaction took off the redacted pages from the dictionaries they shared. */
-internal fun PdfDoc.unlinkRemoved(before: Map<Int, Set<Int>>): Int {
-    val kept = before.keys.flatMap { refsIn(pdf.findPage(it).getInheritable("Resources")) }.toSet()
+internal fun PdfDoc.unlinkRemoved(before: Map<String, Map<Int, Set<Int>>>): Int =
+    RESOURCE_KINDS.sumOf { unlinkKind(it, before[it] ?: emptyMap()) }
+
+private fun PdfDoc.unlinkKind(kind: String, before: Map<Int, Set<Int>>): Int {
+    val kept = before.keys.flatMap { refsIn(pdf.findPage(it).getInheritable("Resources"), kind) }.toSet()
     val removed = before.values.flatten().filter { it !in kept }.toSet()
     if (removed.isEmpty()) return 0
     var unlinked = 0
-    for (group in xobjectGroups("XObject").values) {
+    for (group in xobjectGroups(kind).values) {
         val names = ArrayList<String>()
         for (key in group.xobj) {
             val v = group.xobj.get(key)
@@ -128,12 +142,22 @@ private fun drawsName(page: PDFObject, xobj: PDFObject, name: String): Boolean {
     fun through(res: PDFObject): Boolean {
         if (!res.isDictionary) return true
         if (pageRes > 0 && numOf(res) == pageRes) return true
-        return dict > 0 && listOf("XObject", "Properties").any { numOf(res.get(it)) == dict }
+        return dict > 0 && listOf("XObject", "Font", "Properties").any { numOf(res.get(it)) == dict }
     }
     for (key in xobj) {
         val v = xobj.get(key)
         val sub = v.get("Subtype")
         if (v.isStream && sub.isName && sub.asName() == "Form" && through(v.get("Resources"))) streams.add(v)
+        // A Type 3 glyph program may itself draw with a name from the page's resources (PDF 32000
+        // §9.6.5), so the glyph programs of the other fonts here are read too. The font being
+        // tested skips its own: a font whose glyphs name it would never be let go.
+        if (key.asName() != name && sub.isName && sub.asName() == "Type3") {
+            val procs = v.get("CharProcs")
+            if (procs.isDictionary) for (g in procs) {
+                val proc = procs.get(g)
+                if (proc.isStream) streams.add(proc)
+            }
+        }
     }
     for (s in streams) {
         val bytes = try {

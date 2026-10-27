@@ -438,7 +438,7 @@ fun PdfDoc.applyRedactions(fill: Rgb, label: String?, sanitize: Boolean): Redact
     for (p in pages) withPdfPage(p) { page ->
         for (a in page.annots().filter { it.type == PDFAnnotation.TYPE_REDACT }) annotNumber(page, a).takeIf { it > 0 }?.let { markObjects.add(it) }
     }
-    val drawn = xobjectsDrawn(pages)
+    val drawn = resourcesDrawn(pages)
     for (p in pages) {
         // MuPDF's rewrite of the page misreads T*, ' and " after a Td (desktop §58).
         runCatching { explicitLeading(p) }
