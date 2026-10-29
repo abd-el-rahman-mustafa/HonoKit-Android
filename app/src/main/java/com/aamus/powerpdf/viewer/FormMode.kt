@@ -62,6 +62,7 @@ import com.aamus.powerpdf.OnDebug
 import com.aamus.powerpdf.R
 import com.aamus.powerpdf.doc.DocumentSession
 import com.aamus.powerpdf.engine.FieldKind
+import com.aamus.powerpdf.engine.autoFieldSize
 import com.aamus.powerpdf.engine.FormField
 import com.aamus.powerpdf.engine.formFields
 import com.aamus.powerpdf.engine.setField
@@ -100,6 +101,9 @@ class FieldCache(private val session: DocumentSession) {
 
 /** The form tool's entry in [DocumentSession.typing]. */
 private const val TYPING_KEY = "form"
+
+/** The largest text a live field asks for, in screen points. */
+private const val MAX_SCREEN_FIELD_FONT = 256f
 
 /** Fields that take typing, in reading order across the document (for Previous / Next). */
 private suspend fun textFields(session: DocumentSession): List<FormField> =
@@ -277,8 +281,11 @@ fun rememberFormTool(session: DocumentSession, viewport: ViewportState, onExit: 
             val focus = remember { FocusRequester() }
             val l = viewport.layout
             val r = l.viewRect(viewport, f.page, f.box.x0, f.box.y0, f.box.x1, f.box.y1)
-            val sizePt = if (f.multiline) minOf(11f, f.box.height / 2.6f) else minOf(12f, maxOf(6f, f.box.height * 0.62f))
-            val fontSp = with(density) { (sizePt * l.scale / fontScale / this.density).sp }
+            // The size the engine will draw the value at, so what is typed matches the saved
+            // page. The size on screen is capped after the zoom: a tall field at a high zoom
+            // must not ask for a glyph hundreds of points tall.
+            val sizePt = autoFieldSize(f.box.height, f.multiline)
+            val fontSp = with(density) { (minOf(sizePt * l.scale, MAX_SCREEN_FIELD_FONT) / fontScale / this.density).sp }
             val covered = WindowInsets.ime.getBottom(density) + with(density) { 72.dp.toPx() }
             LaunchedEffect(f.page, f.index, covered) { viewport.reveal(f.page, f.box.x0, f.box.y0, f.box.x1, f.box.y1, covered) }
             LaunchedEffect(f.page, f.index) { focus.requestFocus() }

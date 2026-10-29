@@ -271,7 +271,7 @@ private fun PdfDoc.drawTextField(widget: PDFObject, text: String, da: String) {
     val multiline = flags and FF_MULTILINE != 0
     // A size the field cannot hold (some tools write one fitted to the empty box) counts as "fit".
     val fits = asked > 0 && (if (multiline) asked * 2.4f <= height else asked <= height * 0.9f)
-    var size = if (fits) asked else if (multiline) minOf(11f, height / 2.6f) else minOf(12f, maxOf(6f, height * 0.62f))
+    var size = if (fits) asked else autoFieldSize(height, multiline)
     val pad = 2f + if (border != null) borderWidth else 0f
     val q = widget.getInheritable("Q")
     val rtl = StampText.isRtl(value)
