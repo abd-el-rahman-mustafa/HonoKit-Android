@@ -2,6 +2,7 @@ package com.aamus.powerpdf.engine
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ContentFixTest {
@@ -72,5 +73,29 @@ class ContentFixTest {
         assertEquals(-1 to -1, ContentFix.qDepth("Q 1 0 0 1 5 5 cm"))
         assertEquals(-1 to 0, ContentFix.qDepth("Q q"))
         assertEquals(0 to 0, ContentFix.qDepth("BT (q q Q) Tj ET BI /W 1 /H 1 ID Q Q EI % q\n"))
+    }
+
+    /** E5: the wrapper balances an ordinary page exactly. */
+    @Test
+    fun wrapCountsBalanceAnOrdinaryPage() {
+        assertEquals(1 to 1, ContentFix.wrapCounts(0, 0))
+        // Two unclosed q: one q in front, three Q after.
+        assertEquals(1 to 3, ContentFix.wrapCounts(0, 2))
+        // Three stray Q: four q in front absorb them, one Q closes what is left open.
+        assertEquals(4 to 1, ContentFix.wrapCounts(-3, -3))
+        assertEquals(2 to 2, ContentFix.wrapCounts(-1, 0))
+    }
+
+    /**
+     * The counts come from the page's own operators, so a damaged or hostile stream of nothing but
+     * q or Q must not make a wrapper as large as itself, and must never ask for a negative count.
+     */
+    @Test
+    fun wrapCountsStayBoundedOnAHostileStream() {
+        for ((low, end) in listOf(0 to 500_000, -500_000 to -500_000, -500_000 to 500_000, -1 to -1)) {
+            val (lead, trail) = ContentFix.wrapCounts(low, end)
+            assertTrue("lead $lead for $low/$end", lead in 1..1024)
+            assertTrue("trail $trail for $low/$end", trail in 1..1024)
+        }
     }
 }

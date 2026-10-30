@@ -163,6 +163,23 @@ object ContentFix {
         }
         return low to depth
     }
+
+    /**
+     * How many q (or Q) the wrapper will write: PDF 32000 Annex C puts the graphics-state stack at
+     * 28, so a page needing more than this is already past what any reader honours.
+     */
+    private const val MAX_WRAP = 1024
+
+    /**
+     * How many q go in front of a page's own content and how many Q after it, for the [qDepth] it
+     * reported, so that what is drawn next starts from the default graphics state (E5). Both counts
+     * come from the page's own operators, so a damaged or hostile stream of nothing but q or Q
+     * would otherwise make a wrapper as large as itself; every real file stays exact.
+     */
+    fun wrapCounts(low: Int, end: Int): Pair<Int, Int> {
+        val lead = minOf(1 - low, MAX_WRAP)
+        return lead to maxOf(1, minOf(lead + end, MAX_WRAP))
+    }
 }
 
 /**

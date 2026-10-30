@@ -376,8 +376,9 @@ private fun PDFDocument.wrapContents(page: PDFObject): List<PDFObject> {
     opening.put(WRAP, newName("Open"))
     val closing = newDictionary()
     closing.put(WRAP, newName("Close"))
-    val before = addStream("q\n".repeat(1 - low), opening)
-    val after = addStream("\n" + "Q\n".repeat(maxOf(0, 1 - low + end)), closing)
+    val (lead, trail) = ContentFix.wrapCounts(low, end)
+    val before = addStream("q\n".repeat(lead), opening)
+    val after = addStream("\n" + "Q\n".repeat(trail), closing)
     // (A PDFObject is Iterable: "+ after" would add the keys of its dictionary.)
     return listOf(before) + list + listOf(after)
 }
