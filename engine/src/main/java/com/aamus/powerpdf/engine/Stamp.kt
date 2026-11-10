@@ -115,7 +115,7 @@ object StampText {
         val colour = String.format("#%06x", style.colour.toArgb() and 0xFFFFFF)
         val weight = if (style.bold) "bold" else "normal"
         val out = StringBuilder()
-        for (line in text.split('\n')) {
+        for (line in hardLines(text)) {
             val rtl = isRtl(line)
             // MuPDF mirrors text-align inside a right-to-left paragraph (seen on a phone: "right"
             // put Arabic lines on the left), so the visual side is asked for the other way round.

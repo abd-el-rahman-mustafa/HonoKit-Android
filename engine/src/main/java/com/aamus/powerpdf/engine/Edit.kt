@@ -608,7 +608,7 @@ private fun paragraphHtml(text: String, s: Setting): String {
     if (s.padStart > 0.5f) out.append(String.format(java.util.Locale.US, "padding-%s:%.2fpt;", if (s.rtl) "right" else "left", s.padStart))
     if (abs(s.indent) > 0.5f) out.append(String.format(java.util.Locale.US, "text-indent:%.2fpt;", s.indent))
     out.append("\">")
-    text.split('\n').forEachIndexed { n, line ->
+    hardLines(text).forEachIndexed { n, line ->
         if (n > 0) out.append("<br/>")
         var i = 0
         var arabic: Boolean? = null
@@ -831,7 +831,7 @@ private const val CONDENSE_MIN = 0.8f
 
 /** How wide [text] is set on one line with [s]: its ink, in points (0 when nothing is drawn). */
 private fun naturalWidth(text: String, s: Setting): Float {
-    val laid = layParagraph(text.replace('\n', ' '), s.copy(align = ParagraphAlign.Start, padStart = 0f, indent = 0f), 100_000f)
+    val laid = layParagraph(hardLines(text).joinToString(" "), s.copy(align = ParagraphAlign.Start, padStart = 0f, indent = 0f), 100_000f)
     try {
         val stext = laid.list.toStructuredText("preserve-whitespace")
         try {
