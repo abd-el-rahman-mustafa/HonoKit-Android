@@ -22,6 +22,11 @@ private fun PdfDoc.requireAssemble() {
     if (!r.assemble && !r.edit) throw PdfException(PdfException.Code.Restricted, "The author does not allow rearranging pages.")
 }
 
+/** Pages taken out of this file into an unprotected one need copying and assembling (desktop §116). */
+internal fun PdfDoc.requireTakePages() {
+    if (!rights().takesPages) throw PdfException(PdfException.Code.Restricted, "The author does not allow taking the pages of this PDF into another document.")
+}
+
 fun PdfDoc.rotatePages(pages: Collection<Int>, angle: Int) {
     requireAssemble()
     assertPages(pages)
@@ -136,6 +141,7 @@ fun PdfDoc.insertBlank(at: Int, count: Int = 1, width: Float? = null, height: Fl
 /** Inserts pages of another PDF at [at]. */
 fun PdfDoc.insertFrom(other: PdfDoc, at: Int, pages: List<Int>? = null) {
     requireAssemble()
+    other.requireTakePages()
     val list = pages ?: (0 until other.pageCount).toList()
     other.assertPages(list)
     if (at < 0 || at > pageCount) throw PdfException(PdfException.Code.BadArguments, "Cannot insert at page ${at + 1}.")
@@ -153,6 +159,8 @@ fun PdfDoc.insertFrom(other: PdfDoc, at: Int, pages: List<Int>? = null) {
 fun PdfDoc.writePages(pages: List<Int>, target: File) {
     assertPages(pages)
     if (pages.isEmpty()) throw PdfException(PdfException.Code.BadArguments, "Choose at least one page.")
+    // The copy is written without the file's protection (decrypt below).
+    requireTakePages()
     target.parentFile?.mkdirs()
     // Created exclusively under a random name beside the target (decisions §52).
     val whole = Staging.create(target.absoluteFile.parentFile ?: File("."), "." + target.name + ".", ".part")
@@ -184,6 +192,7 @@ object PdfFiles {
      */
     fun merge(inputs: List<PdfDoc>, target: File) {
         if (inputs.isEmpty()) throw PdfException(PdfException.Code.BadArguments, "Nothing to merge.")
+        for (src in inputs) src.requireTakePages()
         val out = PDFDocument()
         try {
             inputs.forEachIndexed { i, src ->

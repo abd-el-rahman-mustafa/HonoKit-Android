@@ -480,7 +480,14 @@ data class Rights(
     val forms: Boolean,
     val copy: Boolean,
     val print: Boolean,
-)
+) {
+    /**
+     * Pages may leave this file for a document without its protection (Combine, Insert from file,
+     * Extract and Split, which write an unprotected copy): that is copying and assembling both, as
+     * Acrobat's "Page extraction". The permissions password lifts it ([full]).
+     */
+    val takesPages: Boolean get() = full || (copy && (assemble || edit))
+}
 
 /** Quick snapshot between edits. */
 internal const val SAVE_SNAPSHOT = "compress"
