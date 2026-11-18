@@ -45,6 +45,14 @@ class RedactPatternsTest {
     }
 
     @Test
+    fun anEmailWithAnApostropheInItsNameIsTakenWhole() {
+        assertEquals(listOf("o'brien@example.com"), found("write to o'brien@example.com today", RedactPattern.Email))
+        assertEquals(listOf("john'@example.org"), found("or to 'john'@example.org now", RedactPattern.Email))
+        assertEquals(listOf("sara@example.net"), found("or 'sara@example.net' please", RedactPattern.Email))
+        assertEquals(listOf("d’souza@example.ae"), found("or d’souza@example.ae too", RedactPattern.Email))
+    }
+
+    @Test
     fun internationalPhonesAreTakenWhole() {
         val text = "call +1 555.987.6543, office 0044 20 7946 0018, fax +49.2151.123456, desk +33 1 23 45 67 89 01 ext, home +971 50 123 4567"
         assertEquals(
