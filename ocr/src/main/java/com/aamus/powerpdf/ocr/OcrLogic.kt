@@ -274,4 +274,73 @@ object OcrLogic {
         fun pop(): Int = data[--size]
         fun isNotEmpty() = size > 0
     }
+
+    /**
+     * Where the [count] words of a line are in its picture [line], as (left, right) pixel spans left
+     * to right (desktop ocr/index.ts wordSpans, desktop decisions §125): ink is found column by column
+     * against Otsu's threshold, and the widest count − 1 gaps are the word breaks (a gap inside an
+     * Arabic word, between letters that do not join, is narrower than a space). Null when the line
+     * has fewer clear gaps than that or they are too narrow to be spaces: the line is then written
+     * as a whole.
+     */
+    fun wordSpans(line: OcrImage, count: Int): List<FloatArray>? {
+        val w = line.width
+        val h = line.height
+        if (w < 2 || h < 2 || count < 1) return null
+        val grey = IntArray(w * h)
+        val histogram = IntArray(256)
+        for (i in 0 until w * h) {
+            val c = line.px[i]
+            val g = (((c shr 16) and 0xFF) * 299 + ((c shr 8) and 0xFF) * 587 + (c and 0xFF) * 114) / 1000
+            grey[i] = g
+            histogram[g]++
+        }
+        val total = w * h
+        var sum = 0.0
+        for (g in 0 until 256) sum += g.toDouble() * histogram[g]
+        var below = 0
+        var belowSum = 0.0
+        var best = 0.0
+        var threshold = 128
+        for (g in 0 until 256) {
+            below += histogram[g]
+            if (below == 0) continue
+            val above = total - below
+            if (above == 0) break
+            belowSum += g.toDouble() * histogram[g]
+            val d = belowSum / below - (sum - belowSum) / above
+            val between = below.toDouble() * above * d * d
+            if (between > best) {
+                best = between
+                threshold = g
+            }
+        }
+        // A column has ink when a few of its pixels are dark (a speck of dust is not a letter).
+        val least = max(1, (h * 0.04f).roundToInt())
+        val inked = BooleanArray(w) { x -> var dark = 0; for (y in 0 until h) if (grey[y * w + x] <= threshold) dark++; dark >= least }
+        val first = inked.indexOfFirst { it }
+        val last = inked.indexOfLast { it }
+        if (first < 0) return null
+        if (count == 1) return listOf(floatArrayOf(first.toFloat(), (last + 1).toFloat()))
+        val gaps = ArrayList<IntArray>()
+        var x = first
+        while (x <= last) {
+            if (inked[x]) { x++; continue }
+            val start = x
+            while (x <= last && !inked[x]) x++
+            gaps.add(intArrayOf(start, x))
+        }
+        if (gaps.size < count - 1) return null
+        val breaks = gaps.sortedByDescending { it[1] - it[0] }.take(count - 1)
+        // A space is at least about a sixth of the line's height; narrower, and the words are not where we think.
+        if (breaks.any { it[1] - it[0] < h * 0.15f }) return null
+        val spans = ArrayList<FloatArray>()
+        var left = first
+        for (gap in breaks.sortedBy { it[0] }) {
+            spans.add(floatArrayOf(left.toFloat(), gap[0].toFloat()))
+            left = gap[1]
+        }
+        spans.add(floatArrayOf(left.toFloat(), (last + 1).toFloat()))
+        return spans
+    }
 }

@@ -5,8 +5,12 @@ import com.artifex.mupdf.fitz.PDFDocument
 import com.artifex.mupdf.fitz.PDFObject
 import java.text.Bidi
 
-/** A line read from a picture of the page: its text and where it sits, in displayed points (y down). */
-data class RecognisedLine(val text: String, val x: Float, val y: Float, val w: Float, val h: Float)
+/**
+ * A line read from a picture of the page: its text and where it sits, in displayed points (y down).
+ * [words]: where each word shows, as (left, right) spans left to right, when the picture's gaps
+ * matched the words (OcrLogic.wordSpans); the layer then puts each word over its own place.
+ */
+data class RecognisedLine(val text: String, val x: Float, val y: Float, val w: Float, val h: Float, val words: List<FloatArray>? = null)
 
 /**
  * The invisible text layer of "Recognize text" (docs/research-ocr-android.md §3.4, route B; the
@@ -77,15 +81,43 @@ end
             // A space before and after the line, outside its box: readers that join boxes on one
             // baseline into one line keep a word break between them ("تغيثالكونغو" on the phone).
             // Each CID advances one em: squeezed (or stretched) so the line's own letters fill its width.
-            val k = line.w / (units * size)
-            val tz = 100f * k
-            val pad = size * k
             val baseline = frameHeight - (line.y + line.h * 0.78f)
-            val hex = "0020" + visualOrder(text).toCharArray().joinToString("") { "%04X".format(it.code) } + "0020"
-            sb.append("/%s %.3f Tf %.2f Tz 1 0 0 1 %.3f %.3f Tm <%s> Tj\n".format(java.util.Locale.US, FONT, size, tz, line.x - pad, baseline, hex))
+            val visual = visualOrder(text)
+            // Each word over its own place in the picture (desktop decisions §125): a line squeezed
+            // as a whole puts Find's marks beside the words, worst on stretched Arabic. The line's
+            // words as shown run left to right, as the spans do.
+            val shown = visual.split(' ')
+            val spans = line.words
+            if (spans != null && spans.size == shown.size && shown.none { it.isEmpty() }) {
+                for ((i, word) in shown.withIndex()) {
+                    val left = spans[i][0]
+                    val right = spans[i][1]
+                    val n = word.count { !isMark(it) }.coerceAtLeast(1)
+                    val k = (right - left) / (n * size)
+                    // A space before the first word and after the last, outside the line, as below.
+                    val before = if (i == 0) "0020" else ""
+                    val after = if (i == shown.lastIndex) "0020" else ""
+                    write(sb, size, 100f * k, left - (if (i == 0) size * k else 0f), baseline, before + hex(word) + after)
+                    // The space, stretched over the gap to the next word, so the text keeps its word breaks.
+                    if (i < shown.lastIndex) {
+                        val gap = spans[i + 1][0] - right
+                        if (gap > 0f) write(sb, size, 100f * gap / size, right, baseline, "0020")
+                    }
+                }
+                continue
+            }
+            val k = line.w / (units * size)
+            val pad = size * k
+            write(sb, size, 100f * k, line.x - pad, baseline, "0020" + hex(visual) + "0020")
         }
         sb.append("ET\n")
         return sb.toString()
+    }
+
+    private fun hex(text: String): String = text.toCharArray().joinToString("") { "%04X".format(it.code) }
+
+    private fun write(sb: StringBuilder, size: Float, tz: Float, x: Float, baseline: Float, hex: String) {
+        sb.append("/%s %.3f Tf %.2f Tz 1 0 0 1 %.3f %.3f Tm <%s> Tj\n".format(java.util.Locale.US, FONT, size, tz, x, baseline, hex))
     }
 }
 

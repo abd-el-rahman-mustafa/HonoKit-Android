@@ -105,4 +105,31 @@ class OcrLogicTest {
         assertEquals(144, OcrLogic.readWidth(200, 100))
         assertEquals(16, OcrLogic.readWidth(2, 100))
     }
+
+    /** White line [w] × [h] with black blocks at the given (left, right) columns. */
+    private fun inked(w: Int, h: Int, blocks: List<Pair<Int, Int>>): OcrImage {
+        val px = IntArray(w * h) { 0xFFFFFFFF.toInt() }
+        for ((a, b) in blocks) for (y in 4 until h - 4) for (x in a until b) px[y * w + x] = 0xFF000000.toInt()
+        return OcrImage(px, w, h)
+    }
+
+    @Test
+    fun wordSpansAreTheWidestGaps() {
+        // Three words; the middle one has a narrow gap inside (letters that do not join).
+        val line = inked(200, 40, listOf(10 to 50, 70 to 90, 93 to 120, 140 to 190))
+        val spans = OcrLogic.wordSpans(line, 3)!!
+        assertEquals(3, spans.size)
+        assertEquals(listOf(10f, 50f), spans[0].toList())
+        assertEquals(listOf(70f, 120f), spans[1].toList())
+        assertEquals(listOf(140f, 190f), spans[2].toList())
+        // One word: its ink.
+        assertEquals(listOf(10f, 190f), OcrLogic.wordSpans(line, 1)!![0].toList())
+    }
+
+    @Test
+    fun wordSpansGiveUpWhenTheGapsDoNotFit() {
+        // Five words asked for, three gaps there, one of them too narrow for a space.
+        assertEquals(null, OcrLogic.wordSpans(inked(200, 40, listOf(10 to 50, 70 to 90, 93 to 120, 140 to 190)), 5))
+        assertEquals(null, OcrLogic.wordSpans(inked(200, 40, listOf(10 to 90, 93 to 190)), 2))
+    }
 }

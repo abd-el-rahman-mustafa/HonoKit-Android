@@ -67,12 +67,16 @@ object Recognize {
         val boxes = ocr.detectLines(picture.image).filter { it.h >= 8f && it.w >= 12f }
         val out = ArrayList<RecognisedLine>()
         for ((i, box) in boxes.withIndex()) {
-            val r = ocr.read(picture.image.crop(box.x, box.y, box.w, box.h))
+            val lineImage = picture.image.crop(box.x, box.y, box.w, box.h)
+            val r = ocr.read(lineImage)
             onLine(i + 1, boxes.size)
             val text = cleanLatin(r).replace(Regex("\\s+"), " ").trim()
             if (text.isEmpty() || r.confidence < 0.5f) continue
             val k = picture.scale
-            out.add(RecognisedLine(text, box.x / k, box.y / k, box.w / k, box.h / k))
+            // Where each word shows, so Find marks the word itself (desktop decisions §125).
+            val left = kotlin.math.max(0, kotlin.math.round(box.x).toInt())
+            val words = OcrLogic.wordSpans(lineImage, text.split(' ').size)?.map { floatArrayOf((left + it[0]) / k, (left + it[1]) / k) }
+            out.add(RecognisedLine(text, box.x / k, box.y / k, box.w / k, box.h / k, words))
         }
         return out
     }

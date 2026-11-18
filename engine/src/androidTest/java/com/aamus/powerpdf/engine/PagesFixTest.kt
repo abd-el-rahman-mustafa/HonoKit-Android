@@ -566,6 +566,31 @@ class PagesFixTest {
         }
     }
 
+    @Test
+    fun eachRecognisedWordIsFoundWhereThePictureShowsIt() {
+        var doc = Fixtures.open(Fixtures.pdf(content = ""))
+        try {
+            // Words far apart in the picture (a stretched line): each one's spans, left to right.
+            val latin = RecognisedLine("Hello wide world", 60f, 100f, 400f, 24f, listOf(floatArrayOf(60f, 100f), floatArrayOf(200f, 330f), floatArrayOf(400f, 460f)))
+            // Arabic, right to left: "سلام" on the right, "عليكم" on the left.
+            val arabic = RecognisedLine("سلام عليكم", 60f, 200f, 400f, 24f, listOf(floatArrayOf(60f, 200f), floatArrayOf(320f, 460f)))
+            doc.addTextLayer(mapOf(0 to listOf(latin, arabic)))
+            doc = Fixtures.reopen(doc)
+            val text = doc.pageText(0)
+            assertTrue(text, "Hello wide world" in text)
+            assertTrue(text, "سلام عليكم" in text)
+            val lines = doc.lines(0)
+            val wide = TextLogic.searchLines(lines, "wide").single()
+            assertTrue("$wide", wide.x0 > 195f && wide.x1 < 335f)
+            val salam = TextLogic.searchLines(lines, "سلام").single()
+            assertTrue("$salam", salam.x0 > 315f && salam.x1 < 465f)
+            val alaykum = TextLogic.searchLines(lines, "عليكم").single()
+            assertTrue("$alaykum", alaykum.x0 > 55f && alaykum.x1 < 205f)
+        } finally {
+            doc.close()
+        }
+    }
+
     // --- Compress -----------------------------------------------------------------------------------
 
     /** A page with a thumbnail, /PieceInfo, a soft-masked photo-like picture and a palette picture. */

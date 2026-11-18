@@ -30,6 +30,34 @@ class TextLayerTest {
     }
 
     @Test
+    fun eachWordIsWrittenOverItsOwnPlace() {
+        // "ab cd" with the picture's words at 10–30 and 50–90: each word stretched to its span, and
+        // the space stretched over the gap between them.
+        val c = TextLayer.content(listOf(RecognisedLine("ab cd", 10f, 20f, 80f, 10f, listOf(floatArrayOf(10f, 30f), floatArrayOf(50f, 90f)))), 100f)
+        // ab: two ems of 7.2 in 20 pt = 138.89%; the leading space one such em before x = 10.
+        assertTrue(c, c.contains("/HonoPDFOcr 7.200 Tf 138.89 Tz 1 0 0 1 0.000 72.200 Tm <002000610062> Tj"))
+        // The space: the 20 pt gap from x = 30.
+        assertTrue(c, c.contains("/HonoPDFOcr 7.200 Tf 277.78 Tz 1 0 0 1 30.000 72.200 Tm <0020> Tj"))
+        // cd: 40 pt, with the closing space.
+        assertTrue(c, c.contains("/HonoPDFOcr 7.200 Tf 277.78 Tz 1 0 0 1 50.000 72.200 Tm <006300640020> Tj"))
+    }
+
+    @Test
+    fun anArabicLinesFirstWordGoesToTheRightHandSpan() {
+        // Logical "سلام عليكم" shows right to left: "عليكم" (reversed, so meem U+0645 first) on the left.
+        val c = TextLayer.content(listOf(RecognisedLine("سلام عليكم", 0f, 20f, 100f, 10f, listOf(floatArrayOf(0f, 50f), floatArrayOf(60f, 100f)))), 100f)
+        assertTrue(c, c.contains("Tm <00200645"))
+        // "سلام" reversed starts with meem too, at the right-hand span.
+        assertTrue(c, c.contains("1 0 0 1 60.000 72.200 Tm <0645"))
+    }
+
+    @Test
+    fun aLineWhoseGapsDidNotFitIsWrittenWhole() {
+        val c = TextLayer.content(listOf(RecognisedLine("ab cd", 10f, 20f, 40f, 10f, listOf(floatArrayOf(10f, 50f)))), 100f)
+        assertEquals(1, c.lines().count { it.endsWith("Tj") })
+    }
+
+    @Test
     fun emptyAndFlatLinesAreLeftOut() {
         val c = TextLayer.content(listOf(RecognisedLine("  ", 1f, 1f, 5f, 5f), RecognisedLine("x", 1f, 1f, 0f, 5f)), 50f)
         assertEquals("BT 3 Tr\nET\n", c)
