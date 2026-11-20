@@ -338,6 +338,25 @@ internal fun PdfDoc.sanitize() {
 
 private fun overlaps(a: Box, b: Box) = minOf(a.x1, b.x1) > maxOf(a.x0, b.x0) && minOf(a.y1, b.y1) > maxOf(a.y0, b.y0)
 
+/** Whether an annotation's /Rect is exactly four finite numbers (indirect ones resolved). */
+private fun readableRect(obj: PDFObject): Boolean = runCatching {
+    val rect = obj.get("Rect")
+    if (!rect.isArray || rect.size() != 4) return@runCatching false
+    (0 until 4).all { i -> rect.get(i).let { v -> v.isNumber && v.asFloat().isFinite() } }
+}.getOrDefault(false)
+
+/**
+ * Whether an annotation or widget lies on any of the marks. One whose /Rect cannot be read (a
+ * name among the numbers, too few or too many, missing) has no place we can trust: MuPDF reads it
+ * as some box elsewhere, while another reader may draw it on the mark, so on a page being redacted
+ * it counts as touching the marks and goes, its text with it (decisions §77).
+ */
+private fun touchesMarks(boxes: List<Box>, a: PDFAnnotation): Boolean {
+    if (!readableRect(a.getObject())) return true
+    val b = a.bounds
+    return boxes.any { overlaps(it, Box(b.x0, b.y0, b.x1, b.y1)) }
+}
+
 /**
  * What lies on a page's marks besides its content (R2): every annotation that touches a mark —
  * notes, highlights, stamps, ink, shapes, text boxes, links — with their pop-ups and replies, and
@@ -355,15 +374,13 @@ private fun PdfDoc.removeCovered(pageIndex: Int, boxes: List<Box>) {
             val type = a.type
             // The marks themselves go when applied; a pop-up goes with its note.
             if (type == PDFAnnotation.TYPE_REDACT || type == PDFAnnotation.TYPE_POPUP || type == PDFAnnotation.TYPE_WIDGET) continue
-            val b = a.bounds
-            if (boxes.none { overlaps(it, Box(b.x0, b.y0, b.x1, b.y1)) }) continue
+            if (!touchesMarks(boxes, a)) continue
             val num = annotNumber(page, a)
             if (num > 0) annots.add(num) else inline.add(a)
         }
         for (a in inline) runCatching { page.deleteAnnotation(a) }
         for (w in page.widgetList()) {
-            val b = w.bounds
-            if (boxes.any { overlaps(it, Box(b.x0, b.y0, b.x1, b.y1)) }) widgets.add(annotEntry(page, w.getObject()) ?: w.getObject())
+            if (touchesMarks(boxes, w)) widgets.add(annotEntry(page, w.getObject()) ?: w.getObject())
         }
     }
     if (widgets.isNotEmpty()) removeFieldsOf(widgets)
@@ -408,8 +425,7 @@ private fun leftoverUnder(check: PdfDoc, marks: List<Pair<Int, Box>>, overlays: 
             for (a in check.run { pg.annots() }.toList() + check.run { pg.widgetList() }.toList()) {
                 val type = a.type
                 if (type == PDFAnnotation.TYPE_POPUP || type == PDFAnnotation.TYPE_REDACT) continue
-                val b = a.bounds
-                if (list.none { overlaps(it, Box(b.x0, b.y0, b.x1, b.y1)) }) continue
+                if (!touchesMarks(list, a)) continue
                 val obj = a.getObject()
                 val words = (textOf(obj, "Contents") + textOf(obj, "V") + textOf(obj, "RC")).filterNot { it.isWhitespace() }
                 leftover += maxOf(1, words.codePointCount(0, words.length))

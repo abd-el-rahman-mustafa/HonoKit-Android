@@ -129,6 +129,35 @@ class RedactResourcesTest {
         assertFalse(secret in redacted(src))
     }
 
+    /**
+     * A comment whose /Rect cannot be read: MuPDF reads it as some box away from the mark, while
+     * another reader may draw it on the mark; its text stayed and the check counted nothing left.
+     * A comment with a readable (here indirect) box away from the marks stays.
+     */
+    @Test
+    fun aCommentWhoseBoxCannotBeReadIsTakenOffAPageBeingRedacted() {
+        val secret = "TopSecretCommentText"
+        for (rect in listOf("/Rect [100 100 /Oops 120 120]", "/Rect [/A /B /C /D]", "/Rect [500 500 /X 510]", "/Rect (abc)", "", "/Rect 7 0 R")) {
+            val src = build(
+                listOf(
+                    "<< /Type /Catalog /Pages 2 0 R >>",
+                    "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 400 400] >>",
+                    "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Annots [5 0 R 6 0 R] >>",
+                    "<< /Length LEN >>",
+                    "<< /Type /Annot /Subtype /Text $rect /Contents ($secret) >>",
+                    "<< /Type /Annot /Subtype /Text /Rect 8 0 R /Contents (KeptAwayNote) >>",
+                    "[100 100 /Q 120]",
+                    "[360 360 380 380]"
+                ),
+                mapOf(4 to nothing)
+            )
+            assertTrue(rect, secret in Fixtures.allStreams(src))
+            val out = redacted(src)
+            assertFalse(rect, secret in out)
+            assertTrue(rect, "KeptAwayNote" in out)
+        }
+    }
+
     @Test
     fun aReplyWrittenStraightIntoThePageListGoesWithTheCommentItAnswers() {
         val secret = "TopSecretCommentText"
