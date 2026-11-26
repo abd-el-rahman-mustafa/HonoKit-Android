@@ -654,6 +654,63 @@ internal fun PDFDocument.importPages(donor: PDFDocument, list: List<Int>, at: In
     }
 }
 
+// --- File attachments (desktop pages.ts carryAttachments) ---------------------------------------
+
+/** "notes.txt" taken → "notes (2).txt", then "notes (3).txt"… */
+internal fun freeAttachmentName(name: String, taken: Set<String>): String {
+    if (name !in taken) return name
+    val dot = name.lastIndexOf('.')
+    val stem = if (dot > 0) name.substring(0, dot) else name
+    val ext = if (dot > 0) name.substring(dot) else ""
+    var n = 2
+    while ("$stem ($n)$ext" in taken) n++
+    return "$stem ($n)$ext"
+}
+
+/** The catalogue's file attachments (/Names /EmbeddedFiles), read safely (a looping tree stops). */
+private fun embeddedFiles(doc: PDFDocument): List<Pair<String, PDFObject>> {
+    val names = doc.trailer.get("Root").get("Names")
+    if (!names.isDictionary) return emptyList()
+    return nameTree(names.get("EmbeddedFiles")).mapNotNull { (k, v) -> if (k.isString && v.isDictionary) k.asString() to v else null }
+}
+
+/**
+ * Copies [donor]'s file attachments into this document, as Acrobat's Insert Pages and Combine
+ * Files keep them: pages alone left attachments stored only in the catalogue behind. The
+ * document's own stay as they are; an incoming one whose name is taken gets " (2)", " (3)"…
+ * before its extension. Nothing is rewritten when the donor has none; other name trees stay.
+ */
+internal fun PDFDocument.carryAttachments(donor: PDFDocument) {
+    val incoming = embeddedFiles(donor)
+    if (incoming.isEmpty()) return
+    val files = LinkedHashMap<String, PDFObject>()
+    for ((k, v) in embeddedFiles(this)) files[k] = v
+    val map = newPDFGraftMap()
+    try {
+        for ((name, spec) in incoming) {
+            // A file specification never needs a page; one that leads to the page tree would copy it along.
+            if (refersToPage(spec)) continue
+            files[freeAttachmentName(name, files.keys)] = map.graftObject(spec)
+        }
+    } finally {
+        map.destroy()
+    }
+    val root = trailer.get("Root")
+    var names = root.get("Names")
+    if (!names.isDictionary) {
+        names = newDictionary()
+        root.put("Names", names)
+    }
+    val list = newArray()
+    for (key in files.keys.sorted()) {
+        list.push(newString(key))
+        list.push(files.getValue(key))
+    }
+    val tree = newDictionary()
+    tree.put("Names", list)
+    names.put("EmbeddedFiles", tree)
+}
+
 /** Adds imported top-level fields to /AcroForm /Fields, renaming a field whose name is taken. */
 private fun PDFDocument.registerFields(donor: PDFDocument, top: List<PDFObject>, map: PDFGraftMap) {
     if (top.isEmpty()) return

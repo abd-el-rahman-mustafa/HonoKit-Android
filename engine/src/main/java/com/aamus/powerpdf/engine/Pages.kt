@@ -147,6 +147,7 @@ fun PdfDoc.insertFrom(other: PdfDoc, at: Int, pages: List<Int>? = null) {
     if (at < 0 || at > pageCount) throw PdfException(PdfException.Code.BadArguments, "Cannot insert at page ${at + 1}.")
     // With their comments, links and filled-in fields (P2).
     pdf.importPages(other.pdf, list, at)
+    pdf.carryAttachments(other.pdf)
     invalidate()
 }
 
@@ -197,6 +198,7 @@ object PdfFiles {
         try {
             inputs.forEachIndexed { i, src ->
                 out.importPages(src.pdf, (0 until src.pageCount).toList(), out.countPages())
+                out.carryAttachments(src.pdf)
                 if (i == 0) copyMetadata(src.pdf, out)
             }
             out.carryPrintStandard(inputs.map { it.pdf.printStandard() })
