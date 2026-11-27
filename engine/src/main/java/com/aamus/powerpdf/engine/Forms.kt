@@ -413,8 +413,24 @@ fun PdfDoc.xfaKind(): XfaKind? = runCatching {
     if (!xfa.isArray && !xfa.isStream) return@runCatching null
     val fields = acro.get("Fields")
     val needsRendering = root.get("NeedsRendering")
-    if ((needsRendering.isBoolean && needsRendering.asBoolean()) || !fields.isArray || fields.size() == 0) XfaKind.Dynamic else XfaKind.Hybrid
+    if ((needsRendering.isBoolean && needsRendering.asBoolean()) || !fields.isArray || fields.size() == 0) XfaKind.Dynamic
+    else if (xfaConfigText(xfa)?.let(::requiresDynamicRender) == true) XfaKind.Dynamic
+    else XfaKind.Hybrid
 }.getOrNull()
+
+/** The XFA configuration packet's text (or the whole XDP when the XFA is one stream); null if none or too big. */
+private fun xfaConfigText(xfa: PDFObject): String? {
+    fun text(stream: PDFObject): String? = stream.readStream().takeIf { it.size <= MAX_XFA_CONFIG }?.let { String(it, Charsets.UTF_8) }
+    if (xfa.isStream) return text(xfa)
+    var i = 0
+    while (i + 1 < xfa.size()) {
+        val name = xfa.get(i)
+        val packet = xfa.get(i + 1)
+        if (name.isString && name.asString() == "config" && packet.isStream) return text(packet)
+        i += 2
+    }
+    return null
+}
 
 /**
  * Removes the XFA form (and /NeedsRendering), leaving the AcroForm fields, as Acrobat does when it
